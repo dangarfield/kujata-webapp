@@ -3,6 +3,7 @@
     "version": "1.0.0",
     "scripts": {
         "ng": "ng",
+        "dev": "ng serve",
         "start": "ng serve",
         "build": "ng build --configuration production --base-href \"/kujata-webapp/\"",
         "test": "ng test",
