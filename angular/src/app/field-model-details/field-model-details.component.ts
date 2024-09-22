@@ -51,7 +51,7 @@ export class FieldModelDetailsComponent implements OnInit {
       this.fieldModelMetadata = fieldModelMetadata;
       this.initialize();
     });
-    url = environment.KUJATA_DATA_BASE_URL + '/metadata/skeleton-friendly-names.json';
+    url = environment.KUJATA_DATA_BASE_URL + '/metadata/skeleton-names-field.json';
     this.http.get(url).subscribe(skeletonFriendlyNames => {
       this.skeletonFriendlyNames = skeletonFriendlyNames;
       this.initialize();

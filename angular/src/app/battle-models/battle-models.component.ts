@@ -31,25 +31,28 @@ export class BattleModelsComponent implements OnInit {
   ngOnInit() {
     this.displays = [];
     this.status = "Loading skeleton info from database...";
-    this.http.get(environment.KUJATA_DATA_BASE_URL + '/metadata/ff7-battle-database.json').subscribe(battleModelList => {
+    this.http.get(environment.KUJATA_DATA_BASE_URL + '/metadata/skeleton-names-battle.json').subscribe(battleModelList => {
       this.battleModelList = battleModelList;
       // this.sortDatabaseRows();
       // this.createUniqueBoneCounts();
       this.clock = new THREE.Clock();
       var app = this;
-      for (var i = 0; i < this.battleModelList.length; i++) { // skeletonsToLoad.length;
-        var skeleton = this.battleModelList[i];
+      Object.keys(this.battleModelList).forEach((skeleton, i) => {
+
+      
+      // for (var i = 0; i < this.battleModelList.length; i++) { // skeletonsToLoad.length;
+        const friendlyName = this.battleModelList[skeleton];
         // skeleton.friendlyName = skeletonFriendlyNames[skeleton.id.toLowerCase()];
         //skeleton.friendlyName2 = skeletonFriendlyNames2[skeleton.id.toLowerCase()];
         // skeleton.ifalna = ifalna[skeleton.id.toUpperCase()];
-        var display = this.createEmptyDisplay(skeleton, 'ff7_scene_container' + i, 200, 200);
+        var display = this.createEmptyDisplay(skeleton, friendlyName, 'ff7_scene_container' + i, 200, 200);
         this.displays.push(display);
 
         // if (i<12) {
         //   this.delayShowDisplay(app, i, 5000 + 500*(i+1));
         // }
         //setTimeout(() => {app.showDisplays(app, i);}, 2000*(i+1));
-      }
+      })
       // this.displays = this.displays.slice(0, 25);
 
       // console.log('displays', this.displays)
@@ -89,10 +92,11 @@ export class BattleModelsComponent implements OnInit {
   }
 
   // for full screen, width=window.innerWidth, height=window.innerHeight
-  private createEmptyDisplay(skeleton, containerId, width, height) {
+  private createEmptyDisplay(skeleton, friendlyName, containerId, width, height) {
     let display = {
       containerId: containerId,
-      skeleton: skeleton,
+      skeleton,
+      friendlyName,
       scene: new THREE.Scene(),
       camera: new THREE.PerspectiveCamera(90, width / height, 0.1, 1000),
       renderer: null // new THREE.WebGLRenderer()
@@ -164,10 +168,11 @@ export class BattleModelsComponent implements OnInit {
     }
     var display = app.displays[i];
     var skeleton = display.skeleton;
-    this.status = "Loading skeleton model " + skeleton.id + ' (' + skeleton.name + ')...';
+    const friendlyName = display.friendlyName;
+    this.status = "Loading skeleton model " + skeleton + ' (' + friendlyName + ')...';
     var gltfLoader = new GLTFLoader();
     //gltfLoader.setDRACOLoader( new THREE.DRACOLoader() );
-    gltfLoader.load(environment.KUJATA_DATA_BASE_URL + '/data/battle/battle.lgp/' + skeleton.id + '.hrc.gltf', function (gltf) {
+    gltfLoader.load(environment.KUJATA_DATA_BASE_URL + '/data/battle/battle.lgp/' + skeleton + '.hrc.gltf', function (gltf) {
       if (!app || app.isDestroyed) {
         console.log("ignoring gltf load() callback");
         return;

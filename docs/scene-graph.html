@@ -291,8 +291,8 @@ $(document).ready(function() {
 
                   var labels = node.append("text")
                       .text(function(d) {
-                        if (d.mapNames && d.mapNames.length > 0 && d.mapNames[0]) {
-                          return d.mapNames[0]; // + " (" + d.fieldName + ")";
+                        if (d.mapName && d.mapName !== '') {
+                          return d.mapName; // + " (" + d.fieldName + ")";
                         }
                         let codemann8DataName = codemann8Data.fieldMenuNames[d.id];
                         if (codemann8DataName) {

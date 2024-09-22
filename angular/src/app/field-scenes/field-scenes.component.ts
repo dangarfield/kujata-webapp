@@ -47,8 +47,7 @@ export class FieldScenesComponent implements OnInit {
   }
 
   private getFieldMenuName(metadata) {
-    let mapNames = metadata.mapNames;
-    return mapNames.length > 0 ? mapNames[0] : metadata.fieldName;
+    return metadata.mapName !== '' ? metadata.mapName : metadata.fieldName;
   }
 
   public getMenuName(fieldName) {

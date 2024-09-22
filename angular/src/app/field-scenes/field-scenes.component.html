@@ -8,7 +8,7 @@
           <div class="field-name">{{fieldName}}</div>
           <div class="field-menu-name">{{getMenuName(fieldName)}}</div>
           <img *ngIf="fieldName.startsWith('wm')"  class="field-image" [src]="environment.KUJATA_DATA_BASE_URL + '/metadata/world-map/wm0.png'" />
-          <img *ngIf="!fieldName.startsWith('wm')" class="field-image" [src]="environment.KUJATA_DATA_BASE_URL + '/metadata/makou-reactor/backgrounds/' + fieldName + '.png'" />
+          <img *ngIf="!fieldName.startsWith('wm')" class="field-image" [src]="'https://makou-reactor-bg-images.netlify.app/'+fieldName+'.png'" />
         </a>
       </div>
     </div>

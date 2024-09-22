@@ -13,7 +13,7 @@ import { addBlendingToMaterials } from '../helpers/gltf-helper'
 export class FieldModelsComponent implements OnInit {
 
   public environment = environment;
-  public database;
+  public modelIds;
   public status: string;
   public status2: string;
   public uniqueBoneCounts: number[];
@@ -30,33 +30,26 @@ export class FieldModelsComponent implements OnInit {
   ngOnInit() {
     this.displays = [];
     this.status = "Loading skeleton info from database...";
-    this.http.get(environment.KUJATA_DATA_BASE_URL + '/metadata/skeleton-friendly-names.json').subscribe(skeletonFriendlyNames => {
-      this.http.get(environment.KUJATA_DATA_BASE_URL + '/metadata/ifalna.json').subscribe(ifalna => {
-        this.http.get(environment.KUJATA_DATA_BASE_URL + '/metadata/ff7-database.json').subscribe(database => {
-          this.database = database;
-          this.sortDatabaseRows();
-          this.createUniqueBoneCounts();
+    this.http.get(environment.KUJATA_DATA_BASE_URL + '/metadata/skeleton-names-field.json').subscribe(skeletonFriendlyNames => {
+      // this.http.get(environment.KUJATA_DATA_BASE_URL + '/metadata/ifalna.json').subscribe(ifalna => {
+        // this.http.get(environment.KUJATA_DATA_BASE_URL + '/metadata/ff7-database.json').subscribe(database => {
+          // this.database = database;
+          this.modelIds = skeletonFriendlyNames
+          // this.sortDatabaseRows();
+          // this.createUniqueBoneCounts();
           this.clock = new THREE.Clock();
-          let skeletonsToLoad = this.database.skeletons;
+          // let skeletonsToLoad = this.database.skeletons;
           var app = this;
-          for (var i = 0; i < skeletonsToLoad.length; i++) { // skeletonsToLoad.length;
-            var skeleton = skeletonsToLoad[i];
-            skeleton.friendlyName = skeletonFriendlyNames[skeleton.id.toLowerCase()];
-            //skeleton.friendlyName2 = skeletonFriendlyNames2[skeleton.id.toLowerCase()];
-            skeleton.ifalna = ifalna[skeleton.id.toUpperCase()];
-            var display = this.createEmptyDisplay(skeleton, 'ff7_scene_container' + i, 200, 200);
+          Object.keys(this.modelIds).forEach((skeleton, i) => {
+            const friendlyName = this.modelIds[skeleton]
+            var display = this.createEmptyDisplay(skeleton, friendlyName, 'ff7_scene_container' + i, 200, 200);
             this.displays.push(display);
-
-            // if (i<12) {
-            //   this.delayShowDisplay(app, i, 5000 + 500*(i+1));
-            // }
-            //setTimeout(() => {app.showDisplays(app, i);}, 2000*(i+1));
-          }
+          })
           this.recursiveLoadSkeletonAndAddToDisplay(0);
           // this.recursiveDisplayNextSkeleton(0);
           //setTimeout(() => {this.showDisplays();}, 250);
-        });
-      });
+        // });
+      // });
     });
   }
 
@@ -88,10 +81,11 @@ export class FieldModelsComponent implements OnInit {
   }
 
   // for full screen, width=window.innerWidth, height=window.innerHeight
-  private createEmptyDisplay(skeleton, containerId, width, height) {
+  private createEmptyDisplay(skeleton, friendlyName, containerId, width, height) {
     let display = {
       containerId: containerId,
-      skeleton: skeleton,
+      skeleton,
+      friendlyName,
       scene: new THREE.Scene(),
       camera: new THREE.PerspectiveCamera(75, width / height, 0.1, 1000),
       renderer: null // new THREE.WebGLRenderer()
@@ -126,10 +120,11 @@ export class FieldModelsComponent implements OnInit {
     }
     var display = app.displays[i];
     var skeleton = display.skeleton;
-    this.status = "Loading skeleton model " + skeleton.id + ' (' + skeleton.name + ')...';
+    var friendlyName = display.friendlyName;
+    this.status = "Loading skeleton model " + skeleton + ' (' + friendlyName + ')...';
     var gltfLoader = new GLTFLoader();
     //gltfLoader.setDRACOLoader( new THREE.DRACOLoader() );
-    gltfLoader.load(environment.KUJATA_DATA_BASE_URL + '/data/field/char.lgp/' + skeleton.id + '.hrc.gltf', function (gltf) {
+    gltfLoader.load(environment.KUJATA_DATA_BASE_URL + '/data/field/char.lgp/' + skeleton + '.hrc.gltf', function (gltf) {
       if (!app || app.isDestroyed) {
         console.log("ignoring gltf load() callback");
         return;
@@ -159,7 +154,7 @@ export class FieldModelsComponent implements OnInit {
     });
   }
 
-  private sortDatabaseRows() {
+  // private sortDatabaseRows() {
     /*
     this.database.skeletons.sort((s1,s2) => {
       return (s1.numBones - s2.numBones) || (s1.name < s2.name ? -1 : s1.name > s2.name ? 1 : 0);
@@ -171,20 +166,20 @@ export class FieldModelsComponent implements OnInit {
       return cmpRotOrder || cmpNumBones || cmpNumFrames;
     });
     */
-  }
+  // }
 
-  private createUniqueBoneCounts() {
-    this.boneCountSet = new Set<number>();
-    for (let skeleton of this.database.skeletons) {
-      this.boneCountSet.add(skeleton.numBones);
-    }
-    console.log('this.boneCountSet:', this.boneCountSet);
-    this.uniqueBoneCounts = [];
-    this.boneCountSet.forEach((value) => {
-      this.uniqueBoneCounts.push(value);
-    });
-    this.uniqueBoneCounts.sort((c1, c2) => { return c1 < c2 ? -1 : c1 > c2 ? 1 : 0; });
-  }
+  // private createUniqueBoneCounts() {
+  //   this.boneCountSet = new Set<number>();
+  //   for (let skeleton of this.database.skeletons) {
+  //     this.boneCountSet.add(skeleton.numBones);
+  //   }
+  //   console.log('this.boneCountSet:', this.boneCountSet);
+  //   this.uniqueBoneCounts = [];
+  //   this.boneCountSet.forEach((value) => {
+  //     this.uniqueBoneCounts.push(value);
+  //   });
+  //   this.uniqueBoneCounts.sort((c1, c2) => { return c1 < c2 ? -1 : c1 > c2 ? 1 : 0; });
+  // }
 
   /*
   var animate = function () {

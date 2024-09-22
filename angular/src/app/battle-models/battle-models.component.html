@@ -9,15 +9,15 @@
     <div style="height:1em;"></div>
 
     <div style="display:flex; flex-wrap: wrap;">
-        <a *ngFor="let display of displays" class="display-box" [routerLink]="'/battle-model-details/' + display.skeleton.id">
+        <a *ngFor="let display of displays" class="display-box" [routerLink]="'/battle-model-details/' + display.skeleton">
             <div *ngIf="!display.screenshotDataUrl" class="scene-container" [id]="display.containerId"></div>
             <div *ngIf="display.screenshotDataUrl" class="scene-container">
                 <img [src]="display.screenshotDataUrl" />
             </div>
             <div style="height:25px">
-                <div style="text-align:center"><b>{{display.skeleton.name}}</b></div>
+                <div style="text-align:center"><b>{{display.friendlyName}}</b></div>
                 <!--<div style="text-align:center"><b>{{display.skeleton.friendlyName2}}</b></div>-->
-                <div style="text-align:center">{{display.skeleton.id}}</div>
+                <div style="text-align:center">{{display.skeleton}}</div>
                 <!--
         <div style="text-align:center; font-size:8pt">{{display.skeleton.ifalna?.Names.join(' &middot; ')}}</div>
         -->

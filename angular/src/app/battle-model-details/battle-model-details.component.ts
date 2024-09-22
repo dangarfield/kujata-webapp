@@ -67,8 +67,13 @@ export class BattleModelDetailsComponent implements OnInit {
 
   ngOnInit() {
     this.route.paramMap.subscribe(params => {
+      this.http.get(environment.KUJATA_DATA_BASE_URL + '/metadata/skeleton-names-battle.json').subscribe(skeletonFriendlyNames => {
+      
       this.selectedHrcId = params.get("hrcId");
+      this.friendlyName = skeletonFriendlyNames[this.selectedHrcId]
+      console.log('friendlyName', this.friendlyName)
       this.initialize();
+    })
     });
   }
 
