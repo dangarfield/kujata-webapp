@@ -321,7 +321,10 @@ export class BattleModelDetailsComponent implements OnInit {
       this.mixer = new THREE.AnimationMixer(this.gltf.scene);
 
       const actions = this.previewAnimationSequence.map(a => {
-        const action = this.mixer.clipAction(this.gltf.animations[a])
+        const animationIndex = this.bodyAnimationIdToIndexMap[`body-${a}`]
+        const action = this.mixer.clipAction(this.gltf.animations[animationIndex])
+        
+        console.log('animation mapping', a, '->', `body-${a}`, animationIndex)
         action.setLoop(THREE.LoopOnce)
         action.clampWhenFinished = true
         return action
