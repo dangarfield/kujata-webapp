@@ -334,6 +334,7 @@ export class BattleModelDetailsComponent implements OnInit {
       }
       
       this.mixer.addEventListener('finished', () => {
+        this.mixer.stopAllAction()
         actions[playIndex].reset()
         playIndex++
         if (playIndex >= actions.length) {
