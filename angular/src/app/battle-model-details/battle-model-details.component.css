@@ -31,14 +31,14 @@
   background-color:#f8f8f8;
 }
 
-.animation-box {
+.white-panel {
   margin:2px;
   padding:4px;
   background-color:white;
 }
 
-.field-box {
+.grey-panel {
   margin:2px;
   padding:4px;
-  background-color:white;
+  background-color: #f0f0f0;
 }

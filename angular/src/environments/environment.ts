@@ -4,8 +4,8 @@
 
 export const environment = {
   production: false,
-  // KUJATA_DATA_BASE_URL: 'http://localhost:3000/kujata-data'
-  KUJATA_DATA_BASE_URL: 'https://kujata-data-dg.netlify.app'
+  KUJATA_DATA_BASE_URL: 'http://localhost:3000/kujata-data'
+  // KUJATA_DATA_BASE_URL: 'https://kujata-data-dg.netlify.app'
 }
 
 /*

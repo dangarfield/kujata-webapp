@@ -48,7 +48,11 @@ export class BattleModelDetailsComponent implements OnInit {
   public bodyAnimationIds = [];
   public modelGLTF;
   public selectedAnimId = 0;
+  public previewAnimations = []
   public friendlyName;
+  public actionSequence;
+  public scriptsPlayer;
+  public scriptsEnemy;
   public metadata;
   public Object = Object; // so the html can call Object.keys()
   // THREE.js objects
@@ -59,8 +63,11 @@ export class BattleModelDetailsComponent implements OnInit {
   public camera;
   public controls;
   public mixer;
+  public action
   public isAnimationEnabled = false;
   public isDestroyed = false;
+  public previewAnimationSequence
+  public previewAnimationIndex
 
   constructor(public route: ActivatedRoute, public http: HttpClient) {
   }
@@ -68,12 +75,46 @@ export class BattleModelDetailsComponent implements OnInit {
   ngOnInit() {
     this.route.paramMap.subscribe(params => {
       this.http.get(environment.KUJATA_DATA_BASE_URL + '/metadata/skeleton-names-battle.json').subscribe(skeletonFriendlyNames => {
-      
-      this.selectedHrcId = params.get("hrcId");
-      this.friendlyName = skeletonFriendlyNames[this.selectedHrcId]
-      console.log('friendlyName', this.friendlyName)
-      this.initialize();
-    })
+        this.http.get<any[]>(environment.KUJATA_DATA_BASE_URL + '/data/battle/action-sequences.json').subscribe((actionSequences) => {
+          this.http.get<any[]>(environment.KUJATA_DATA_BASE_URL + '/metadata/action-sequence-metadata-player.json').subscribe((metadataPlayer: any[]) => {
+            this.selectedHrcId = params.get("hrcId");
+            this.friendlyName = skeletonFriendlyNames[this.selectedHrcId]
+            console.log('friendlyName', this.friendlyName)
+            
+            this.actionSequence = actionSequences[this.selectedHrcId.slice(0, -1) + 'b']
+            this.scriptsEnemy = this.actionSequence.scriptsEnemy.map((script, i) => {
+              const s = {id: i, script, name: '???', play:script.map(s => parseInt(s.raw.substring(0,2),16)).filter(a => a <= 0x8d)}
+              // for (const player of metadataPlayer) {
+              //   const foundAction = player.actionSequences.find(action => action.id === s.id);
+              //   if (foundAction) {
+              //     s.name = foundAction.name;
+              //     break;
+              //   }
+              // }
+              if(s.id === 1) s.name = 'Hurt'
+            
+              return s
+            })
+            console.log('actionSequence', this.actionSequence)
+
+            this.scriptsPlayer = this.actionSequence.scriptsPlayer.map((script, i) => {
+              const s = {id: i, script, name: '???', play:script.map(s => parseInt(s.raw.substring(0,2),16)).filter(a => a <= 0x8d)}
+              for (const player of metadataPlayer) {
+                const foundAction = player.actionSequences.find(action => action.id === s.id);
+                if (foundAction) {
+                  s.name = foundAction.name;
+                  break;
+                }
+              }
+            
+              return s
+            })
+            console.log('scriptsPlayer', this.scriptsPlayer)
+          
+            this.initialize();
+          })
+        })
+      })
     });
   }
 
@@ -147,10 +188,18 @@ export class BattleModelDetailsComponent implements OnInit {
   }
 
   onSelectAnimation(animId) {
+    console.log('onSelectAnimation', animId)
+    this.previewAnimationSequence = null
     this.selectedAnimId = animId;
     this.initializeSceneWithCombinedGLTF(this, this.modelGLTF);
   }
 
+  startScriptPreviewAndScroll(animIndexes) {
+    this.previewAnimationSequence = animIndexes
+    this.selectedAnimId = null;
+    this.initializeSceneWithCombinedGLTF(this, this.modelGLTF);
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
   initializeSceneWithCombinedGLTF(app, combinedGLTF) {
     var modelRootHeight = combinedGLTF.nodes[1].translation[1];
     if (modelRootHeight == 0) {
@@ -255,15 +304,55 @@ export class BattleModelDetailsComponent implements OnInit {
     }); // end of three.js glotf loader
   }
 
+  // public triggerNextAnimation() {
+  //   console.log('triggerNextAnimation')
+  //   if(this.previewAnimationSequence !== null) {
+  //     this.previewAnimationIndex++
+  //     if (this.previewAnimationIndex+1 > this.previewAnimationSequence.length) {
+  //       this.startScriptPreview(this.previewAnimationSequence)
+  //       return
+  //     }
+  //     this.playNextAnimation()
+  //   }
+  // }
   public startAnimation() {
-    if (this.selectedAnimId) {
+    if(this.previewAnimationSequence) {
+      this.isAnimationEnabled = true;
+      this.mixer = new THREE.AnimationMixer(this.gltf.scene);
+
+      const actions = this.previewAnimationSequence.map(a => {
+        const action = this.mixer.clipAction(this.gltf.animations[a])
+        action.setLoop(THREE.LoopOnce)
+        action.clampWhenFinished = true
+        return action
+      })
+      let playIndex = 0
+
+      const playNextAnimInSequence = () => {
+        console.log('play', playIndex, actions[playIndex])
+        actions[playIndex].reset().play()
+      }
+      
+      this.mixer.addEventListener('finished', () => {
+        actions[playIndex].reset()
+        playIndex++
+        if (playIndex >= actions.length) {
+          playIndex = 0
+        }
+        playNextAnimInSequence()
+      })
+      
+      this.controls.target.y = this.controls.target.y + this.gltf.animations[0].tracks[0].values[1]
+      playNextAnimInSequence()
+
+    } else if (this.selectedAnimId) {
       this.isAnimationEnabled = true;
       this.mixer = new THREE.AnimationMixer(this.gltf.scene);
       let animationIndex = this.bodyAnimationIdToIndexMap[this.selectedAnimId]
       this.controls.target.y = this.controls.target.y + this.gltf.animations[animationIndex].tracks[0].values[1]
-      const action = this.mixer.clipAction(this.gltf.animations[animationIndex])
+      this.action = this.mixer.clipAction(this.gltf.animations[animationIndex])
       // action.timeScale = 0.2
-      action.play();
+      this.action.play();
     }
   }
 
