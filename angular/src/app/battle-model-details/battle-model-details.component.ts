@@ -84,14 +84,20 @@ export class BattleModelDetailsComponent implements OnInit {
             this.actionSequence = actionSequences[this.selectedHrcId.slice(0, -1) + 'b']
             this.scriptsEnemy = this.actionSequence.scriptsEnemy.map((script, i) => {
               const s = {id: i, script, name: '???', play:script.map(s => parseInt(s.raw.substring(0,2),16)).filter(a => a <= 0x8d)}
-              // for (const player of metadataPlayer) {
-              //   const foundAction = player.actionSequences.find(action => action.id === s.id);
-              //   if (foundAction) {
-              //     s.name = foundAction.name;
-              //     break;
-              //   }
-              // }
-              if(s.id === 1) s.name = 'Hurt'
+              if(this.actionSequence.scriptsPlayer.length > 0) {
+                for (const player of metadataPlayer) {
+                  const foundAction = player.actionSequences.find(action => action.id === s.id);
+                  if (foundAction) {
+                    s.name = foundAction.name;
+                    break;
+                  }
+                }
+              } else {
+                if(s.id === 0) s.name = 'Idle'
+                if(s.id === 1) s.name = 'Hurt'
+                if(s.id === 2) s.name = 'Hurt Critical'
+              }
+              
             
               return s
             })
@@ -99,13 +105,13 @@ export class BattleModelDetailsComponent implements OnInit {
 
             this.scriptsPlayer = this.actionSequence.scriptsPlayer.map((script, i) => {
               const s = {id: i, script, name: '???', play:script.map(s => parseInt(s.raw.substring(0,2),16)).filter(a => a <= 0x8d)}
-              for (const player of metadataPlayer) {
-                const foundAction = player.actionSequences.find(action => action.id === s.id);
-                if (foundAction) {
-                  s.name = foundAction.name;
-                  break;
-                }
-              }
+              // for (const player of metadataPlayer) {
+              //   const foundAction = player.actionSequences.find(action => action.id === s.id);
+              //   if (foundAction) {
+              //     s.name = foundAction.name;
+              //     break;
+              //   }
+              // }
             
               return s
             })
@@ -327,6 +333,7 @@ export class BattleModelDetailsComponent implements OnInit {
         console.log('animation mapping', a, '->', `body-${a}`, animationIndex)
         action.setLoop(THREE.LoopOnce)
         action.clampWhenFinished = true
+        // action.timeScale = 0.2
         return action
       })
       let playIndex = 0
@@ -337,6 +344,8 @@ export class BattleModelDetailsComponent implements OnInit {
       }
       
       this.mixer.addEventListener('finished', () => {
+        this.gltf.scene.position.x = this.gltf.scene.children[0].position.x
+        this.gltf.scene.position.z = this.gltf.scene.children[0].position.z
         this.mixer.stopAllAction()
         actions[playIndex].reset()
         playIndex++
@@ -355,7 +364,9 @@ export class BattleModelDetailsComponent implements OnInit {
       let animationIndex = this.bodyAnimationIdToIndexMap[this.selectedAnimId]
       this.controls.target.y = this.controls.target.y + this.gltf.animations[animationIndex].tracks[0].values[1]
       this.action = this.mixer.clipAction(this.gltf.animations[animationIndex])
-      // action.timeScale = 0.2
+      // this.action.timeScale = 0.2
+      // this.action.clampWhenFinished = true
+      // this.action.setLoop(THREE.LoopOnce)
       this.action.play();
     }
   }

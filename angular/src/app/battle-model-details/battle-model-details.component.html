@@ -33,15 +33,16 @@
   </div>
 </div>
 
-<div class="grey-panel" *ngIf="scriptsPlayer && scriptsPlayer.length> 0">
+
+<div class="grey-panel" *ngIf="scriptsEnemy && scriptsEnemy.length> 0">
   <div class="white-panel">
-    <h4>Player Action Scripts</h4>
+    <h4>Enemy Action Scripts</h4>
     <div style="display:flex; flex-flow:row wrap; align-items:flex-start; align-content:flex-start; font-size:12pt;">
-      <div *ngFor="let s of scriptsPlayer; let i = index">
-        <div class="grey-panel" style="width-600px;">
+      <div *ngFor="let s of scriptsEnemy; let i = index">
+        <div *ngIf="s.script.length > 0" class="grey-panel" style="width-600px; ">
           <div style="font-size: 14pt; color: #404040;">
             #{{i}}
-            <span style="font-size: 12pt; color: #808080;">{{s.name}}</span>
+            <span style="font-size: 12pt; color: #808080;">{{ s.name }}</span>
             <span style="margin-left: 20px; cursor: pointer;" (click)="startScriptPreviewAndScroll(s.play)" ><i class="fa fa-play-circle"></i></span>
           </div>
           <div class="white-panel kujata-font-mono" style="font-size: 8pt;">
@@ -56,15 +57,15 @@
   </div>
 </div>
 
-<div class="grey-panel" *ngIf="scriptsEnemy && scriptsEnemy.length> 0">
+<div class="grey-panel" *ngIf="scriptsPlayer && scriptsPlayer.length> 0">
   <div class="white-panel">
-    <h4>Enemy Action Scripts</h4>
+    <h4>Player Action Scripts</h4>
     <div style="display:flex; flex-flow:row wrap; align-items:flex-start; align-content:flex-start; font-size:12pt;">
-      <div *ngFor="let s of scriptsEnemy; let i = index">
-        <div *ngIf="s.script.length > 0" class="grey-panel" style="width-600px; ">
+      <div *ngFor="let s of scriptsPlayer; let i = index">
+        <div *ngIf="s.script.length > 0" class="grey-panel" style="width-600px;">
           <div style="font-size: 14pt; color: #404040;">
             #{{i}}
-            <span style="font-size: 12pt; color: #808080;">{{ s.name }}</span>
+            <span style="font-size: 12pt; color: #808080;">{{s.name}}</span>
             <span style="margin-left: 20px; cursor: pointer;" (click)="startScriptPreviewAndScroll(s.play)" ><i class="fa fa-play-circle"></i></span>
           </div>
           <div class="white-panel kujata-font-mono" style="font-size: 8pt;">
