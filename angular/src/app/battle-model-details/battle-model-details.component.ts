@@ -71,53 +71,81 @@ export class BattleModelDetailsComponent implements OnInit {
 
   constructor(public route: ActivatedRoute, public http: HttpClient) {
   }
+  enemyCodeToEnemyId(code) {
+    const id2 = code.charCodeAt(0) - 97
+    const id3 = code.charCodeAt(1) - 97
+    return id2 * 26 + id3
+  }
+  getEnemyDataFromSceneBin(hrcId, sceneBin) {
+    const enemyId = this.enemyCodeToEnemyId(hrcId)
+    for (const scene of sceneBin) {
+      for (const enemyIdKey of [1,2,3]) {
+        if (scene[`enemyId${enemyIdKey}`] === enemyId) {
+          const enemy = scene[`enemyData${enemyIdKey}`]
+          // console.log('enemyData', scene, enemy)
+          return {scene, enemy}
+        }
+      }
+    }
+    // window.alert('unknown enemy')
+    return null
+  }
 
   ngOnInit() {
     this.route.paramMap.subscribe(params => {
       this.http.get(environment.KUJATA_DATA_BASE_URL + '/metadata/skeleton-names-battle.json').subscribe(skeletonFriendlyNames => {
-        this.http.get<any[]>(environment.KUJATA_DATA_BASE_URL + '/data/battle/action-sequences.json').subscribe((actionSequences) => {
-          this.http.get<any[]>(environment.KUJATA_DATA_BASE_URL + '/metadata/action-sequence-metadata-player.json').subscribe((metadataPlayer: any[]) => {
-            this.selectedHrcId = params.get("hrcId");
-            this.friendlyName = skeletonFriendlyNames[this.selectedHrcId]
-            console.log('friendlyName', this.friendlyName)
-            
-            this.actionSequence = actionSequences[this.selectedHrcId.slice(0, -1) + 'b']
-            this.scriptsEnemy = this.actionSequence.scriptsEnemy.map((script, i) => {
-              const s = {id: i, script, name: '???', play:script.map(s => parseInt(s.raw.substring(0,2),16)).filter(a => a <= 0x8d)}
-              if(this.actionSequence.scriptsPlayer.length > 0) {
-                for (const player of metadataPlayer) {
-                  const foundAction = player.actionSequences.find(action => action.id === s.id);
-                  if (foundAction) {
-                    s.name = foundAction.name;
-                    break;
+        this.http.get(environment.KUJATA_DATA_BASE_URL + '/data/battle/scene.bin/scene.bin.json').subscribe(sceneBin => {
+          this.http.get<any[]>(environment.KUJATA_DATA_BASE_URL + '/data/battle/action-sequences.json').subscribe((actionSequences) => {
+            this.http.get<any[]>(environment.KUJATA_DATA_BASE_URL + '/metadata/action-sequence-metadata-player.json').subscribe((metadataPlayer: any[]) => {
+              this.selectedHrcId = params.get("hrcId");
+              this.friendlyName = skeletonFriendlyNames[this.selectedHrcId]
+              console.log('friendlyName', this.friendlyName)
+              const enemyData = this.getEnemyDataFromSceneBin(this.selectedHrcId, sceneBin)
+              // console.log('sceneBin', sceneBin, enemyData)
+              this.actionSequence = actionSequences[this.selectedHrcId.slice(0, -1) + 'b']
+              this.scriptsEnemy = this.actionSequence.scriptsEnemy.map((script, i) => {
+                const s = {id: i, script, name: '???', play:script.map(s => parseInt(s.raw.substring(0,2),16)).filter(a => a <= 0x8d)}
+                if(this.actionSequence.scriptsPlayer.length > 0) {
+                  for (const player of metadataPlayer) {
+                    const foundAction = player.actionSequences.find(action => action.id === s.id);
+                    if (foundAction) {
+                      s.name = foundAction.name;
+                      break;
+                    }
+                  }
+                } else {
+                  if(s.id === 0) s.name = 'Idle'
+                  if(s.id === 1) s.name = 'Hurt'
+                  if(s.id === 2) s.name = 'Hurt Critical'
+                  const actionIndex = enemyData.enemy.actionSequenceIndex.findIndex(i => i === s.id)
+                  if (actionIndex >= 0) {
+                    const actionName = enemyData.scene.attackData[actionIndex].name
+                    // console.log('actionIndex', s.id, actionIndex, actionName)
+                    s.name = actionName
                   }
                 }
-              } else {
-                if(s.id === 0) s.name = 'Idle'
-                if(s.id === 1) s.name = 'Hurt'
-                if(s.id === 2) s.name = 'Hurt Critical'
-              }
+                
               
-            
-              return s
-            })
-            console.log('actionSequence', this.actionSequence)
+                return s
+              })
+              console.log('actionSequence', this.actionSequence)
 
-            this.scriptsPlayer = this.actionSequence.scriptsPlayer.map((script, i) => {
-              const s = {id: i, script, name: '???', play:script.map(s => parseInt(s.raw.substring(0,2),16)).filter(a => a <= 0x8d)}
-              // for (const player of metadataPlayer) {
-              //   const foundAction = player.actionSequences.find(action => action.id === s.id);
-              //   if (foundAction) {
-              //     s.name = foundAction.name;
-              //     break;
-              //   }
-              // }
+              this.scriptsPlayer = this.actionSequence.scriptsPlayer.map((script, i) => {
+                const s = {id: i, script, name: '???', play:script.map(s => parseInt(s.raw.substring(0,2),16)).filter(a => a <= 0x8d)}
+                // for (const player of metadataPlayer) {
+                //   const foundAction = player.actionSequences.find(action => action.id === s.id);
+                //   if (foundAction) {
+                //     s.name = foundAction.name;
+                //     break;
+                //   }
+                // }
+              
+                return s
+              })
+              console.log('scriptsPlayer', this.scriptsPlayer)
             
-              return s
+              this.initialize();
             })
-            console.log('scriptsPlayer', this.scriptsPlayer)
-          
-            this.initialize();
           })
         })
       })
