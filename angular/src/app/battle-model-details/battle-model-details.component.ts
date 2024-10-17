@@ -51,8 +51,7 @@ export class BattleModelDetailsComponent implements OnInit {
   public previewAnimations = []
   public friendlyName;
   public actionSequence;
-  public scriptsPlayer;
-  public scriptsEnemy;
+  public scripts;
   public metadata;
   public Object = Object; // so the html can call Object.keys()
   // THREE.js objects
@@ -103,9 +102,9 @@ export class BattleModelDetailsComponent implements OnInit {
               const enemyData = this.getEnemyDataFromSceneBin(this.selectedHrcId, sceneBin)
               // console.log('sceneBin', sceneBin, enemyData)
               this.actionSequence = actionSequences[this.selectedHrcId.slice(0, -1) + 'b']
-              this.scriptsEnemy = this.actionSequence.scriptsEnemy.map((script, i) => {
+              this.scripts = this.actionSequence.scripts.map((script, i) => {
                 const s = {id: i, script, name: '???', play:script.map(s => parseInt(s.raw.substring(0,2),16)).filter(a => a <= 0x8d)}
-                if(this.actionSequence.scriptsPlayer.length > 0) {
+                if(this.actionSequence.scripts.length > 0) {
                   for (const player of metadataPlayer) {
                     const foundAction = player.actionSequences.find(action => action.id === s.id);
                     if (foundAction) {
@@ -129,20 +128,6 @@ export class BattleModelDetailsComponent implements OnInit {
                 return s
               })
               console.log('actionSequence', this.actionSequence)
-
-              this.scriptsPlayer = this.actionSequence.scriptsPlayer.map((script, i) => {
-                const s = {id: i, script, name: '???', play:script.map(s => parseInt(s.raw.substring(0,2),16)).filter(a => a <= 0x8d)}
-                // for (const player of metadataPlayer) {
-                //   const foundAction = player.actionSequences.find(action => action.id === s.id);
-                //   if (foundAction) {
-                //     s.name = foundAction.name;
-                //     break;
-                //   }
-                // }
-              
-                return s
-              })
-              console.log('scriptsPlayer', this.scriptsPlayer)
             
               this.initialize();
             })
