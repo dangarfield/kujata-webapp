@@ -102,9 +102,10 @@ export class BattleModelDetailsComponent implements OnInit {
               const enemyData = this.getEnemyDataFromSceneBin(this.selectedHrcId, sceneBin)
               // console.log('sceneBin', sceneBin, enemyData)
               this.actionSequence = actionSequences[this.selectedHrcId.slice(0, -1) + 'b']
+              console.log('actionSequence', this.actionSequence)
               this.scripts = this.actionSequence.scripts.map((script, i) => {
                 const s = {id: i, script, name: '???', play:script.map(s => parseInt(s.raw.substring(0,2),16)).filter(a => a <= 0x8d)}
-                if(this.actionSequence.scripts.length > 0) {
+                if(this.actionSequence.type === 'player') {
                   for (const player of metadataPlayer) {
                     const foundAction = player.actionSequences.find(action => action.id === s.id);
                     if (foundAction) {
