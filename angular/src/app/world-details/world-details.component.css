@@ -1,0 +1,386 @@
+.world-details-panel {
+  width: 100%;
+  background-color: #f0f0f0;
+  padding: 16px;
+  text-align: center;
+}
+
+.world-title {
+  font-size: 16pt;
+  color: #404040;
+  margin-bottom: 16px;
+  font-weight: bold;
+}
+
+.main-content {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.scene-container {
+  display: inline-block;
+  width: 1200px;
+  height: 800px;
+  background-color: #222222;
+  border: solid #c0c0c0 2px;
+  flex-shrink: 0;
+}
+
+.triangle-info-panel {
+  width: 300px;
+  background-color: #f8f8f8;
+  border: solid #c0c0c0 2px;
+  border-radius: 4px;
+  padding: 12px;
+  font-size: 9pt;
+  max-height: 800px;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.info-header {
+  font-weight: bold;
+  font-size: 11pt;
+  color: #404040;
+  margin-bottom: 12px;
+  text-align: center;
+  border-bottom: solid #c0c0c0 1px;
+  padding-bottom: 4px;
+}
+
+.info-section {
+  margin-bottom: 8px;
+  padding: 4px;
+  background-color: #ffffff;
+  border-radius: 2px;
+  border: solid #e0e0e0 1px;
+}
+
+.info-label {
+  font-weight: bold;
+  color: #666;
+  font-size: 8pt;
+  margin-bottom: 2px;
+}
+
+.info-value {
+  color: #333;
+  font-family: monospace;
+  font-size: 8pt;
+  line-height: 1.3;
+}
+
+.vertex-data {
+  font-size: 7pt;
+  line-height: 1.2;
+}
+
+.vertex-data div {
+  margin: 1px 0;
+}
+
+.no-info-message {
+  text-align: center;
+  color: #888;
+  font-style: italic;
+  padding: 20px;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+  margin: 10px 0;
+}
+
+.no-info-message p {
+  margin: 8px 0;
+}
+
+.no-info-message small {
+  font-size: 7pt;
+  color: #aaa;
+}
+
+.status-message {
+  padding: 20px;
+  font-size: 12pt;
+  color: #666;
+}
+
+.status-message.error {
+  color: #cc0000;
+}
+
+.world-info {
+  padding: 12px;
+  font-size: 10pt;
+  color: #404040;
+  background-color: #e0e0e0;
+  margin-bottom: 16px;
+  border-radius: 4px;
+}
+
+.debug-controls {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: solid #c0c0c0 1px;
+}
+
+.debug-button {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  margin-right: 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 9pt;
+  transition: background-color 0.3s;
+}
+
+.debug-button:hover {
+  background-color: #45a049;
+}
+
+.debug-button.reset-button {
+  background-color: #ff6b6b;
+}
+
+.debug-button.reset-button:hover {
+  background-color: #ff5252;
+}
+
+.debug-button.uv-button {
+  background-color: #2196F3;
+}
+
+.debug-button.uv-button:hover {
+  background-color: #1976D2;
+}
+
+.uv-debug-panel {
+  background-color: #f0f8ff;
+  border: solid #2196F3 2px;
+  border-radius: 4px;
+  padding: 12px;
+  margin: 12px 0;
+  font-size: 9pt;
+}
+
+.uv-debug-header {
+  font-weight: bold;
+  font-size: 11pt;
+  color: #1976D2;
+  margin-bottom: 8px;
+  text-align: center;
+  border-bottom: solid #2196F3 1px;
+  padding-bottom: 4px;
+}
+
+.uv-debug-info {
+  background-color: #ffffff;
+  padding: 6px;
+  margin-bottom: 8px;
+  border-radius: 2px;
+  font-family: monospace;
+  font-size: 8pt;
+}
+
+.uv-debug-hint {
+  font-style: italic;
+  color: #666;
+  font-size: 7pt;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: solid #e0e0e0 1px;
+}
+
+.texture-selector {
+  background-color: #ffffff;
+  border: solid #e0e0e0 1px;
+  border-radius: 2px;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+
+.texture-selector-label {
+  font-weight: bold;
+  color: #1976D2;
+  margin-bottom: 4px;
+  font-size: 8pt;
+}
+
+.texture-dropdown {
+  width: 100%;
+  padding: 4px;
+  margin-bottom: 6px;
+  border: solid #ccc 1px;
+  border-radius: 2px;
+  font-size: 8pt;
+  font-family: monospace;
+  background-color: #fff;
+}
+
+.texture-dropdown:focus {
+  outline: none;
+  border-color: #2196F3;
+}
+
+.reset-texture-button {
+  background-color: #ff9800;
+  font-size: 7pt;
+  padding: 4px 8px;
+}
+
+.reset-texture-button:hover {
+  background-color: #f57c00;
+}
+
+.uv-visualizer-container {
+  background-color: #ffffff;
+  border: solid #e0e0e0 1px;
+  border-radius: 2px;
+  padding: 8px;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.uv-visualizer-label {
+  font-weight: bold;
+  color: #1976D2;
+  margin-bottom: 6px;
+  font-size: 8pt;
+}
+
+.uv-visualizer-canvas {
+  border: solid #ccc 2px;
+  border-radius: 2px;
+  cursor: default;
+  display: block;
+  margin: 0 auto 6px auto;
+}
+
+.uv-visualizer-legend {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 4px;
+}
+
+.uv-legend-item {
+  display: flex;
+  align-items: center;
+  font-size: 7pt;
+  color: #333;
+}
+
+.uv-legend-color {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 4px;
+  border: solid #fff 1px;
+}
+
+.uv1-color {
+  background-color: #ff0000;
+}
+
+.uv2-color {
+  background-color: #00ff00;
+}
+
+.uv3-color {
+  background-color: #0000ff;
+}
+
+.uv-visualizer-hint {
+  font-style: italic;
+  color: #666;
+  font-size: 7pt;
+}
+
+.uv-vertex-controls {
+  background-color: #ffffff;
+  border: solid #e0e0e0 1px;
+  border-radius: 2px;
+  padding: 8px;
+  margin-bottom: 6px;
+}
+
+.uv-vertex-label {
+  font-weight: bold;
+  color: #1976D2;
+  margin-bottom: 4px;
+  font-size: 8pt;
+}
+
+.uv-slider-group {
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+  gap: 8px;
+}
+
+.uv-slider-group label {
+  min-width: 80px;
+  font-family: monospace;
+  font-size: 7pt;
+  color: #333;
+}
+
+.uv-slider-group input[type="range"] {
+  flex: 1;
+  height: 4px;
+  background: #ddd;
+  outline: none;
+  border-radius: 2px;
+}
+
+.uv-slider-group input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  background: #2196F3;
+  cursor: pointer;
+  border-radius: 50%;
+}
+
+.uv-slider-group input[type="range"]::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  background: #2196F3;
+  cursor: pointer;
+  border-radius: 50%;
+  border: none;
+}
+
+.uv-debug-actions {
+  text-align: center;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: solid #e0e0e0 1px;
+}
+
+.debug-info {
+  font-size: 8pt;
+  color: #666;
+  font-style: italic;
+}
+
+.loading-progress {
+  margin-top: 16px;
+}
+
+.progress-bar {
+  width: 300px;
+  height: 20px;
+  background-color: #ddd;
+  border-radius: 10px;
+  margin: 8px auto;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: #4CAF50;
+  transition: width 0.3s ease;
+}

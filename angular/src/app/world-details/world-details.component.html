@@ -1,0 +1,212 @@
+<div class="world-details-panel">
+  <div class="world-title">{{worldType | titlecase}} World</div>
+  
+  <div *ngIf="fetchStatus == 'FETCHING'" class="status-message">
+    <p>Loading world map metadata and blocks...</p>
+    <div *ngIf="loadingProgress.total > 0" class="loading-progress">
+      <p>Loading blocks: {{loadingProgress.loaded}} / {{loadingProgress.total}}</p>
+      <div class="progress-bar">
+        <div class="progress-fill" [style.width.%]="(loadingProgress.loaded / loadingProgress.total) * 100"></div>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="fetchStatus == 'ERROR'" class="status-message error">
+    <p>Sorry, this app had a problem loading the world map.</p>
+  </div>
+
+  <div *ngIf="fetchStatus == 'SUCCESS'" class="world-info">
+    <p>Complete FF7 World Map loaded! Use WASD to move, Space/Shift for up/down, mouse to look around.</p>
+    <p>Click on the scene to enable pointer lock controls. Hover over triangles for details.</p>
+    <p><strong>Press 'U'</strong> to transfer selected triangle to UV debugger (or default triangle if none selected).</p>
+    <div class="debug-controls">
+      <button class="debug-button" (click)="toggleWireframes()">
+        {{showWireframes ? 'Hide' : 'Show'}} Wireframes
+      </button>
+      <button class="debug-button reset-button" (click)="resetCameraPosition()">
+        Reset Camera
+      </button>
+      <button class="debug-button uv-button" (click)="toggleUVDebugPanel()">
+        {{showUVDebugPanel ? 'Hide' : 'Show'}} UV Debug
+      </button>
+      <span class="debug-info">Debug: {{wireframeBlocks.size}} blocks with wireframes</span>
+    </div>
+    
+    <!-- UV Debug Panel -->
+    <div class="uv-debug-panel" *ngIf="showUVDebugPanel && uvDebugData">
+      <div class="uv-debug-header">UV Debug Panel - Editing Triangle</div>
+      <div class="uv-debug-info">
+        <div><strong>Block:</strong> {{uvDebugData.blockId}}</div>
+        <div><strong>Mesh:</strong> {{uvDebugData.meshName}}</div>
+        <div><strong>Triangle:</strong> {{uvDebugData.triangleIndex}}</div>
+        <div class="uv-debug-hint">Press 'U' to transfer hovered triangle here</div>
+      </div>
+      
+      <!-- UV Visualizer -->
+      <div class="uv-visualizer-container">
+        <div class="uv-visualizer-label">UV Visualizer (0-1 range)</div>
+        <canvas id="uv-visualizer-canvas" class="uv-visualizer-canvas"></canvas>
+        <div class="uv-visualizer-legend">
+          <div class="uv-legend-item"><span class="uv-legend-color uv1-color"></span>UV1 (Red)</div>
+          <div class="uv-legend-item"><span class="uv-legend-color uv2-color"></span>UV2 (Green)</div>
+          <div class="uv-legend-item"><span class="uv-legend-color uv3-color"></span>UV3 (Blue)</div>
+        </div>
+        <div class="uv-visualizer-hint">Drag points to change UV coordinates</div>
+      </div>
+      
+      <!-- UV1 Controls -->
+      <div class="uv-vertex-controls">
+        <div class="uv-vertex-label">Vertex 1 ({{uvDebugData.vertexIndices[0]}})</div>
+        <div class="uv-slider-group">
+          <label>U: {{uvDebugData.uvCoords.uv1.u.toFixed(4)}}</label>
+          <input type="range" 
+                 min="0" max="1" step="0.001" 
+                 [value]="uvDebugData.uvCoords.uv1.u"
+                 (input)="updateUV('uv1', 'u', +$event.target.value)">
+        </div>
+        <div class="uv-slider-group">
+          <label>V: {{uvDebugData.uvCoords.uv1.v.toFixed(4)}}</label>
+          <input type="range" 
+                 min="0" max="1" step="0.001" 
+                 [value]="uvDebugData.uvCoords.uv1.v"
+                 (input)="updateUV('uv1', 'v', +$event.target.value)">
+        </div>
+      </div>
+      
+      <!-- UV2 Controls -->
+      <div class="uv-vertex-controls">
+        <div class="uv-vertex-label">Vertex 2 ({{uvDebugData.vertexIndices[1]}})</div>
+        <div class="uv-slider-group">
+          <label>U: {{uvDebugData.uvCoords.uv2.u.toFixed(4)}}</label>
+          <input type="range" 
+                 min="0" max="1" step="0.001" 
+                 [value]="uvDebugData.uvCoords.uv2.u"
+                 (input)="updateUV('uv2', 'u', +$event.target.value)">
+        </div>
+        <div class="uv-slider-group">
+          <label>V: {{uvDebugData.uvCoords.uv2.v.toFixed(4)}}</label>
+          <input type="range" 
+                 min="0" max="1" step="0.001" 
+                 [value]="uvDebugData.uvCoords.uv2.v"
+                 (input)="updateUV('uv2', 'v', +$event.target.value)">
+        </div>
+      </div>
+      
+      <!-- UV3 Controls -->
+      <div class="uv-vertex-controls">
+        <div class="uv-vertex-label">Vertex 3 ({{uvDebugData.vertexIndices[2]}})</div>
+        <div class="uv-slider-group">
+          <label>U: {{uvDebugData.uvCoords.uv3.u.toFixed(4)}}</label>
+          <input type="range" 
+                 min="0" max="1" step="0.001" 
+                 [value]="uvDebugData.uvCoords.uv3.u"
+                 (input)="updateUV('uv3', 'u', +$event.target.value)">
+        </div>
+        <div class="uv-slider-group">
+          <label>V: {{uvDebugData.uvCoords.uv3.v.toFixed(4)}}</label>
+          <input type="range" 
+                 min="0" max="1" step="0.001" 
+                 [value]="uvDebugData.uvCoords.uv3.v"
+                 (input)="updateUV('uv3', 'v', +$event.target.value)">
+        </div>
+      </div>
+      
+      <div class="uv-debug-actions">
+        <button class="debug-button reset-button" (click)="resetUVs()">Reset UVs</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <div class="scene-container" [id]="'world-' + worldType + '-container'">
+    </div>
+    
+    <!-- Triangle Info Panel - Always Present -->
+    <div class="triangle-info-panel">
+      <div class="info-header">Triangle Inspector</div>
+      
+      <div *ngIf="!triangleInfo" class="no-info-message">
+        <p>Hover over triangles to see details</p>
+        <p><small>(Unlock pointer first if using FPS controls)</small></p>
+      </div>
+      
+      <div *ngIf="triangleInfo">
+        <div class="info-section">
+          <div class="info-label">Block & Mesh:</div>
+          <div class="info-value">Block {{triangleInfo.blockId}} - {{triangleInfo.meshName}}</div>
+        </div>
+        
+        <div class="info-section">
+        <div class="info-label">Face Index:</div>
+        <div class="info-value">{{triangleInfo.faceIndex}}</div>
+      </div>
+      
+      <div class="info-section">
+        <div class="info-label">Distance:</div>
+        <div class="info-value">{{triangleInfo.distance}} units</div>
+      </div>
+      
+      <div class="info-section">
+        <div class="info-label">World Position:</div>
+        <div class="info-value">
+          X: {{triangleInfo.worldPosition.x}}<br>
+          Y: {{triangleInfo.worldPosition.y}}<br>
+          Z: {{triangleInfo.worldPosition.z}}
+        </div>
+      </div>
+      
+      <div class="info-section" *ngIf="triangleInfo.uv">
+        <div class="info-label">UV Coordinates:</div>
+        <div class="info-value">
+          U: {{triangleInfo.uv.u}}<br>
+          V: {{triangleInfo.uv.v}}
+        </div>
+      </div>
+      
+      <div class="info-section">
+        <div class="info-label">Material:</div>
+        <div class="info-value">
+          <div>Type: {{triangleInfo.material.type}}</div>
+          <div>Name: {{triangleInfo.material.name}}</div>
+          <div *ngIf="triangleInfo.material.color">Color: {{triangleInfo.material.color}}</div>
+          <div *ngIf="triangleInfo.material.texture">
+            <strong>Texture:</strong><br>
+            Name: {{triangleInfo.material.texture.name}}<br>
+            Size: {{triangleInfo.material.texture.size}}<br>
+            Wrap: {{triangleInfo.material.texture.wrapS}}, {{triangleInfo.material.texture.wrapT}}
+          </div>
+        </div>
+      </div>
+      
+      <div class="info-section">
+        <div class="info-label">Geometry:</div>
+        <div class="info-value">
+          <div>Type: {{triangleInfo.geometry.type}}</div>
+          <div>Vertices: {{triangleInfo.geometry.vertexCount}}</div>
+          <div>Faces: {{triangleInfo.geometry.faceCount}}</div>
+          <div>Has Normals: {{triangleInfo.geometry.hasNormals ? 'Yes' : 'No'}}</div>
+          <div>Has UVs: {{triangleInfo.geometry.hasUVs ? 'Yes' : 'No'}}</div>
+        </div>
+      </div>
+      
+      <div class="info-section" *ngIf="triangleInfo.triangleVertices">
+        <div class="info-label">Triangle Vertices:</div>
+        <div class="info-value vertex-data">
+          <div>V1: [{{triangleInfo.triangleVertices.v1[0].toFixed(2)}}, {{triangleInfo.triangleVertices.v1[1].toFixed(2)}}, {{triangleInfo.triangleVertices.v1[2].toFixed(2)}}]</div>
+          <div>V2: [{{triangleInfo.triangleVertices.v2[0].toFixed(2)}}, {{triangleInfo.triangleVertices.v2[1].toFixed(2)}}, {{triangleInfo.triangleVertices.v2[2].toFixed(2)}}]</div>
+          <div>V3: [{{triangleInfo.triangleVertices.v3[0].toFixed(2)}}, {{triangleInfo.triangleVertices.v3[1].toFixed(2)}}, {{triangleInfo.triangleVertices.v3[2].toFixed(2)}}]</div>
+        </div>
+      </div>
+      
+      <div class="info-section" *ngIf="triangleInfo.triangleUVs">
+        <div class="info-label">Triangle UVs:</div>
+        <div class="info-value vertex-data">
+          <div>UV1: [{{triangleInfo.triangleUVs.uv1[0].toFixed(4)}}, {{triangleInfo.triangleUVs.uv1[1].toFixed(4)}}]</div>
+          <div>UV2: [{{triangleInfo.triangleUVs.uv2[0].toFixed(4)}}, {{triangleInfo.triangleUVs.uv2[1].toFixed(4)}}]</div>
+          <div>UV3: [{{triangleInfo.triangleUVs.uv3[0].toFixed(4)}}, {{triangleInfo.triangleUVs.uv3[1].toFixed(4)}}]</div>
+        </div>
+      </div>
+      </div>
+    </div>
+  </div>
+</div>

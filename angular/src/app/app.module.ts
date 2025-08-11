@@ -14,7 +14,9 @@ import { FieldModelsComponent } from './field-models/field-models.component';
 import { BattleModelsComponent } from './battle-models/battle-models.component';
 import { FieldModelDetailsComponent } from './field-model-details/field-model-details.component';
 import { BattleModelDetailsComponent } from './battle-model-details/battle-model-details.component';
-import { SoundDetailsComponent } from './sound-details/sound-details.component'
+import { SoundDetailsComponent } from './sound-details/sound-details.component';
+import { WorldMapComponent } from './world-map/world-map.component';
+import { WorldDetailsComponent } from './world-details/world-details.component';
 
 const appRoutes: Routes = [
   { path: 'field-scenes', component: FieldScenesComponent },
@@ -26,6 +28,7 @@ const appRoutes: Routes = [
   { path: 'field-op-codes', component: FieldOpCodesComponent },
   { path: 'field-op-code-details/:hex', component: FieldOpCodeDetailsComponent },
   { path: 'sounds', component: SoundDetailsComponent },
+  { path: 'world-map', component: WorldMapComponent },
   { path: '**', component: FieldScenesComponent }
 ];
 
@@ -41,7 +44,9 @@ const appRoutes: Routes = [
     SceneDetailsComponent,
     FieldOpCodesComponent,
     FieldOpCodeDetailsComponent,
-    SoundDetailsComponent
+    SoundDetailsComponent,
+    WorldMapComponent,
+    WorldDetailsComponent
   ],
   imports: [
     BrowserModule,

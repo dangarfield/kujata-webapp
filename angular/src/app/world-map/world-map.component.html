@@ -1,0 +1,34 @@
+<div style="background-color:#c0c0c0; padding:4px;">
+
+  <div style="background-color:white; padding:4px; margin-bottom:4px;">
+    <div style="font-size:20pt; color:#404040;">World Map</div>
+    <div style="font-size:16pt; color:#808080;">Final Fantasy VII World Map Viewer</div>
+  </div>
+
+  <!-- Tab Navigation -->
+  <div class="tab-container">
+    <div 
+      *ngFor="let tab of tabs" 
+      class="tab-header"
+      [class.active]="activeTab === tab.id"
+      (click)="onSelectTab(tab.id)">
+      {{tab.label}}
+    </div>
+  </div>
+
+  <!-- Tab Content -->
+  <div class="tab-content">
+    <div *ngIf="activeTab === 'overground'" class="tab-panel">
+      <world-details [worldType]="'overground'"></world-details>
+    </div>
+    
+    <div *ngIf="activeTab === 'underwater'" class="tab-panel">
+      <world-details [worldType]="'underwater'"></world-details>
+    </div>
+    
+    <div *ngIf="activeTab === 'glacier'" class="tab-panel">
+      <world-details [worldType]="'glacier'"></world-details>
+    </div>
+  </div>
+
+</div>
