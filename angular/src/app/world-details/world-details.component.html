@@ -32,6 +32,18 @@
       <span class="debug-info">Debug: {{wireframeBlocks.size}} blocks with wireframes</span>
     </div>
     
+    <!-- Visualization Mode Selector -->
+    <div class="visualization-controls">
+      <label class="visualization-label">Visualization Mode:</label>
+      <select class="visualization-dropdown" 
+              [value]="visualizationMode" 
+              (change)="changeVisualizationMode($event.target.value)">
+        <option *ngFor="let mode of visualizationModes" [value]="mode.value">
+          {{mode.label}}
+        </option>
+      </select>
+    </div>
+    
     <!-- UV Debug Panel -->
     <div class="uv-debug-panel" *ngIf="showUVDebugPanel && uvDebugData">
       <div class="uv-debug-header">UV Debug Panel - Editing Triangle</div>
@@ -204,6 +216,32 @@
           <div>UV1: [{{triangleInfo.triangleUVs.uv1[0].toFixed(4)}}, {{triangleInfo.triangleUVs.uv1[1].toFixed(4)}}]</div>
           <div>UV2: [{{triangleInfo.triangleUVs.uv2[0].toFixed(4)}}, {{triangleInfo.triangleUVs.uv2[1].toFixed(4)}}]</div>
           <div>UV3: [{{triangleInfo.triangleUVs.uv3[0].toFixed(4)}}, {{triangleInfo.triangleUVs.uv3[1].toFixed(4)}}]</div>
+        </div>
+      </div>
+      
+      <div class="info-section" *ngIf="triangleInfo.metadata">
+        <div class="info-label">Metadata:</div>
+        <div class="info-value">
+          <div *ngIf="triangleInfo.metadata.terrain !== null" class="metadata-section">
+            <strong>Terrain:</strong> {{getTerrainName(triangleInfo.metadata.terrain)}} ({{triangleInfo.metadata.terrain}})
+          </div>
+          <div *ngIf="triangleInfo.metadata.terrain === null" class="metadata-missing">
+            <strong>Terrain:</strong> Not found
+          </div>
+          
+          <div *ngIf="triangleInfo.metadata.region !== null" class="metadata-section">
+            <strong>Region:</strong> {{getRegionName(triangleInfo.metadata.region)}} ({{triangleInfo.metadata.region}})
+          </div>
+          <div *ngIf="triangleInfo.metadata.region === null" class="metadata-missing">
+            <strong>Region:</strong> Not found
+          </div>
+          
+          <div *ngIf="triangleInfo.metadata.script !== null" class="metadata-section">
+            <strong>Script:</strong> {{triangleInfo.metadata.script}}
+          </div>
+          <div *ngIf="triangleInfo.metadata.script === null" class="metadata-missing">
+            <strong>Script:</strong> Not found
+          </div>
         </div>
       </div>
       </div>

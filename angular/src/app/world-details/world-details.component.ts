@@ -6,6 +6,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js'
 import { addBlendingToMaterials } from '../helpers/gltf-helper'
 
+
 @Component({
   selector: 'world-details',
   templateUrl: './world-details.component.html',
@@ -22,6 +23,7 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
   
   // World map metadata
   public worldMapMetadata: any = null;
+  public walkmeshTypes: any = null; // Store fetched walkmesh types data
   public loadedBlocks: Map<number, THREE.Object3D> = new Map();
   public wireframeBlocks: Map<number, THREE.LineSegments> = new Map();
   public showWireframes = false;
@@ -30,6 +32,7 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
   // Camera persistence
   private cameraStorageKey: string;
   private saveInterval: any;
+  private isWorldTypeSwitching: boolean = false;
   
   // Triangle inspection
   public triangleInfo: any = null;
@@ -52,6 +55,20 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
   private isDraggingUVPoint = false;
   private draggedVertex: 'uv1' | 'uv2' | 'uv3' | null = null;
   private uvVisualizerSize = 200;
+  
+  // Visualization modes
+  public visualizationMode: string = 'textured';
+  public visualizationModes = [
+    { value: 'textured', label: 'Textured' },
+    { value: 'terrain', label: 'Terrain' },
+    { value: 'region', label: 'Region' },
+    { value: 'script', label: 'Script (tbc)' }
+  ];
+  private originalMaterials = new Map<THREE.Mesh, THREE.Material | THREE.Material[]>();
+  
+  // Lighting objects for different modes
+  private ambientLight: THREE.AmbientLight;
+  private directionalLight: THREE.DirectionalLight;
   
   // THREE.js objects
   public clock;
@@ -95,6 +112,8 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
     // Clear previous world data when switching tabs
     if (this.scene) {
       this.clearWorldData();
+      // Set a flag to indicate we're switching world types
+      this.isWorldTypeSwitching = true;
       this.loadWorldMapMetadata();
     }
   }
@@ -121,7 +140,7 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
     this.scene.background = new THREE.Color(0x222222);
 
     // Camera
-    this.camera = new THREE.PerspectiveCamera(75, this.SCENE_WIDTH / this.SCENE_HEIGHT, 0.1, 100000);
+    this.camera = new THREE.PerspectiveCamera(75, this.SCENE_WIDTH / this.SCENE_HEIGHT, 0.1, 300000);
     this.camera.position.set(0, 5, 10);
 
     // Renderer
@@ -129,6 +148,9 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
     this.renderer.setSize(this.SCENE_WIDTH, this.SCENE_HEIGHT);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    
+    // Fix dark GLTF materials with proper encoding
+    this.renderer.outputEncoding = THREE.sRGBEncoding;
 
     // PointerLockControls
     this.controls = new PointerLockControls(this.camera, this.renderer.domElement);
@@ -155,23 +177,19 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
 
     // Enhanced Lighting
     // Ambient light for overall illumination
-    const ambientLight = new THREE.AmbientLight(0xffffff, 5);
-    this.scene.add(ambientLight);
-
-    // Hemisphere light for more natural ambient lighting
-    // const hemisphereLight = new THREE.HemisphereLight(0x87CEEB, 0x8B4513, 0.4);
-    // hemisphereLight.position.set(0, 20, 0);
-    // this.scene.add(hemisphereLight);
+    this.ambientLight = new THREE.AmbientLight(0xffffff, 1.0); // Start with textured mode lighting
+    this.scene.add(this.ambientLight);
 
     // Main directional light (sun)
-    // const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    // directionalLight.position.set(10, 10, 5);
-    // directionalLight.castShadow = true;
-    // directionalLight.shadow.mapSize.width = 2048;
-    // directionalLight.shadow.mapSize.height = 2048;
-    // directionalLight.shadow.camera.near = 0.5;
-    // directionalLight.shadow.camera.far = 50;
-    // this.scene.add(directionalLight);
+    this.directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    this.directionalLight.position.set(200000, 200000, 100000);
+    this.directionalLight.castShadow = true;
+    this.directionalLight.shadow.mapSize.width = 2048;
+    this.directionalLight.shadow.mapSize.height = 2048;
+    this.directionalLight.shadow.camera.near = 0.5;
+    this.directionalLight.shadow.camera.far = 100000;
+    this.directionalLight.visible = false; // Start hidden for textured mode
+    this.scene.add(this.directionalLight);
 
     // // Point light for additional highlights
     // const pointLight = new THREE.PointLight(0xffffff, 0.3, 30);
@@ -237,10 +255,15 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
     this.currentTexture = '';
     this.showUVDebugPanel = false;
     
+    // Clear visualization data
+    this.originalMaterials.clear();
+    this.visualizationMode = 'textured';
+    
+    // Clear walkmesh types data (will be reloaded)
+    this.walkmeshTypes = null;
+    
     // Reset fetch status
     this.fetchStatus = "NONE";
-    
-    console.log(`Cleared previous world data for switching to ${this.worldType}`);
   }
 
   private getWorldMapType(): string {
@@ -260,22 +283,23 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
     this.fetchStatus = "FETCHING";
     this.cdr.detectChanges();
     
+    // Load both world map metadata and walkmesh types
     const worldMapType = this.getWorldMapType();
     const metadataUrl = environment.KUJATA_DATA_BASE_URL + `/metadata/world/${worldMapType}-map.json`;
+    const walkmeshTypesUrl = environment.KUJATA_DATA_BASE_URL + `/metadata/world/walkmesh-types.json`;
     
-    console.log(`Loading metadata for ${this.worldType} world (${worldMapType}):`, metadataUrl);
-    
-    this.http.get(metadataUrl).subscribe({
-      next: (metadata: any) => {
-        this.worldMapMetadata = metadata;
-        console.log(`World map metadata loaded for ${worldMapType}:`, metadata);
-        this.loadAllWorldBlocks();
-      },
-      error: (error) => {
-        console.error(`Error loading world map metadata for ${worldMapType}:`, error);
-        this.fetchStatus = "ERROR";
-        this.cdr.detectChanges();
-      }
+    // Use Promise.all to load both resources
+    Promise.all([
+      this.http.get(metadataUrl).toPromise(),
+      this.http.get(walkmeshTypesUrl).toPromise()
+    ]).then(([metadata, walkmeshTypes]) => {
+      this.worldMapMetadata = metadata;
+      this.walkmeshTypes = walkmeshTypes;
+      this.loadAllWorldBlocks();
+    }).catch((error) => {
+      console.error(`Error loading world map data for ${worldMapType}:`, error);
+      this.fetchStatus = "ERROR";
+      this.cdr.detectChanges();
     });
   }
 
@@ -289,8 +313,6 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
     // const defaultBlocks = [37]
     this.loadingProgress.total = defaultBlocks.length;
     this.loadingProgress.loaded = 0;
-    
-    console.log(`Loading ${defaultBlocks.length} world blocks...`);
     
     // Load all default blocks (0-62)
     defaultBlocks.forEach(blockId => {
@@ -324,7 +346,6 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
         this.createWireframeForBlock(blockId, gltf.scene);
         
         this.loadingProgress.loaded++;
-        console.log(`Loaded ${worldMapType} block ${blockId} - ${this.loadingProgress.loaded}/${this.loadingProgress.total}`);
         
         // Check if all blocks are loaded
         if (this.loadingProgress.loaded === this.loadingProgress.total) {
@@ -332,7 +353,6 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
           this.cdr.detectChanges();
           this.positionCameraForWorldView();
           this.initUVDebugPanel();
-          console.log(`All ${worldMapType} world blocks loaded successfully!`);
         }
       },
       (progress) => {
@@ -354,24 +374,13 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
   }
 
   private positionCameraForWorldView() {
-    // Position camera to view the entire world map (only if no saved position)
-    const savedData = localStorage.getItem(this.cameraStorageKey);
+    // Always set the camera to fit the scene first
+    this.setCameraToFitScene();
     
-    if (!savedData) {
-      // Grid is 7 cols x 9 rows, each block is 8192 units apart, scaled by 1
-      const worldWidth = 6 * 8192; // 6 gaps between 7 columns
-      const worldHeight = 8 * 8192; // 8 gaps between 9 rows
-      const centerX = worldWidth / 2;
-      const centerZ = worldHeight / 2;
-      
-      // Position camera 8192 units above the center of the world
-      this.camera.position.set(centerX, 8192, centerZ);
-      this.camera.lookAt(centerX, 0, centerZ);
-      
-      console.log(`Camera positioned to view world: center(${centerX}, 0, ${centerZ}), size(${worldWidth} x ${worldHeight})`);
-    }
+    // Reset the world type switching flag
+    this.isWorldTypeSwitching = false;
     
-    // Initialize camera persistence (load saved position if exists)
+    // Then initialize camera persistence (which will load saved position if it exists)
     this.initCameraPersistence();
   }
 
@@ -386,7 +395,7 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
       if (child instanceof THREE.Mesh && child.geometry) {
         const wireframeGeometry = new THREE.WireframeGeometry(child.geometry);
         const wireframeMaterial = new THREE.LineBasicMaterial({ 
-          color: 0xff0000,
+          color: 0x000000,
           transparent: true,
           opacity: 0.5
         });
@@ -407,8 +416,6 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
     // Add to scene but make it invisible initially
     wireframeGroup.visible = this.showWireframes;
     this.scene.add(wireframeGroup);
-    
-    console.log(`Created wireframe for block ${blockId} with ${wireframeGroup.children.length} wireframe meshes`);
   }
 
   public toggleWireframes() {
@@ -418,8 +425,6 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
     this.wireframeBlocks.forEach((wireframeGroup, blockId) => {
       wireframeGroup.visible = this.showWireframes;
     });
-    
-    console.log(`Wireframes ${this.showWireframes ? 'enabled' : 'disabled'} for ${this.wireframeBlocks.size} blocks`);
   }
 
   private animate() {
@@ -472,12 +477,8 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
     // Make camera look at the center of the model
     this.camera.lookAt(center);
     
-    // FlyControls don't have a target, but we can reset the controls
-    if (this.controls) {
-      this.controls.reset();
-    }
-    
-    console.log('Camera focused on model at:', center, 'distance:', distance);
+    // PointerLockControls don't have a reset method like other controls
+    // The camera direction will be controlled by mouse movement once pointer is locked
   }
 
   private setupKeyboardControls() {
@@ -694,8 +695,114 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
         faceCount: geometry.index ? geometry.index.count / 3 : geometry.attributes.position.count / 3,
         hasNormals: !!geometry.attributes.normal,
         hasUVs: !!geometry.attributes.uv
-      }
+      },
+      metadata: this.getTriangleMetadata(mesh, faceIndex)
     };
+  }
+
+  private getTriangleMetadata(mesh: THREE.Mesh, faceIndex: number): any {
+    const geometry = mesh.geometry;
+    const metadata: any = {
+      terrain: null,
+      region: null,
+      script: null,
+      availableAttributes: Object.keys(geometry.attributes)
+    };
+    
+    // Check for terrain data (try multiple naming conventions)
+    const terrainAttr = geometry.attributes._terrain_type || 
+                       geometry.attributes._TERRAIN_TYPE || 
+                       geometry.attributes.TERRAIN_TYPE;
+    if (terrainAttr && faceIndex * 3 < terrainAttr.count) {
+      // Just get the first vertex value since all three will be the same
+      metadata.terrain = terrainAttr.getX(faceIndex * 3);
+    }
+    
+    // Check for region data (try multiple naming conventions)
+    const regionAttr = geometry.attributes._region_id || 
+                      geometry.attributes._REGION_ID || 
+                      geometry.attributes.REGION_ID;
+    if (regionAttr && faceIndex * 3 < regionAttr.count) {
+      metadata.region = regionAttr.getX(faceIndex * 3);
+    }
+    
+    // Check for script data (try multiple naming conventions)
+    const scriptAttr = geometry.attributes._script_id || 
+                      geometry.attributes._SCRIPT_ID || 
+                      geometry.attributes.SCRIPT_ID;
+    if (scriptAttr && faceIndex * 3 < scriptAttr.count) {
+      metadata.script = scriptAttr.getX(faceIndex * 3);
+    }
+    
+    return metadata;
+  }
+
+  // Methods for triangle inspector display
+  public getTerrainName(terrainId: number): string {
+    if (!this.walkmeshTypes || !this.walkmeshTypes.triangleTypes) {
+      return 'Loading...';
+    }
+    return this.walkmeshTypes.triangleTypes[terrainId] || 'Unknown';
+  }
+
+  public getRegionName(regionId: number): string {
+    if (!this.walkmeshTypes || !this.walkmeshTypes.regionNames) {
+      return 'Loading...';
+    }
+    return this.walkmeshTypes.regionNames[regionId] || 'Unknown';
+  }
+
+  private setCameraToFitScene() {
+    if (this.loadedBlocks.size === 0) {
+      return;
+    }
+
+    // Calculate bounding box of all loaded meshes
+    const boundingBox = new THREE.Box3();
+    
+    this.loadedBlocks.forEach((block, blockId) => {
+      block.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          // Get the bounding box of this mesh
+          const meshBoundingBox = new THREE.Box3().setFromObject(child);
+          boundingBox.union(meshBoundingBox);
+        }
+      });
+    });
+
+    if (boundingBox.isEmpty()) {
+      return;
+    }
+
+    // Get the center and size of the bounding box
+    const center = boundingBox.getCenter(new THREE.Vector3());
+    const size = boundingBox.getSize(new THREE.Vector3());
+    
+    // Calculate camera height to fit the world width in the viewing area
+    const worldWidth = Math.max(size.x, size.z); // Use the larger horizontal dimension
+    const fov = this.camera.fov * (Math.PI / 180); // Convert to radians
+    
+    // Calculate height needed so that worldWidth fits in the view
+    // For a top-down view: height = (worldWidth / 2) / tan(fov / 2)
+    const cameraHeight = (worldWidth / 2) / Math.tan(fov / 2);
+
+    // Add some padding (10% extra height for comfortable viewing)
+    const paddedHeight = cameraHeight * 0.75;
+    
+    // Position camera directly above the center, looking straight down
+    const cameraPosition = new THREE.Vector3(
+      center.x,
+      center.y + paddedHeight, // Directly above at calculated height
+      center.z
+    );
+    
+    // Set camera position and look straight down at the center
+    this.camera.position.copy(cameraPosition);
+    this.camera.lookAt(center.x, center.y, center.z); // Look straight down
+    
+    // PointerLockControls doesn't have a target property like OrbitControls
+    // The camera direction is controlled by mouse movement, not by a target
+    // No need to update controls target for PointerLockControls
   }
 
   private transferTriangleToUVDebugger() {
@@ -704,7 +811,6 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
     
     if (this.triangleInfo) {
       // Use the currently inspected triangle
-      console.log('Transferring inspected triangle to UV debugger');
       
       // Find the mesh from the triangle info
       const blockId = this.triangleInfo.blockId;
@@ -722,7 +828,6 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
       targetFaceIndex = this.triangleInfo.faceIndex || 0;
     } else {
       // Default to first triangle of first mesh of first block
-      console.log('No triangle selected, using default (0,0,0)');
       
       const firstBlockId = Math.min(...Array.from(this.loadedBlocks.keys()));
       const firstBlock = this.loadedBlocks.get(firstBlockId);
@@ -761,8 +866,6 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
     
     // Initialize the UV visualizer
     this.initUVVisualizer();
-    
-    console.log(`Triangle transferred to UV debugger: Block ${this.uvDebugData?.blockId}, Triangle ${targetFaceIndex}`);
   }
 
   // UV Debug Panel methods
@@ -799,8 +902,6 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
     
     // Get the UV data for the first triangle
     this.updateUVDebugData();
-    
-    console.log(`UV Debug Panel initialized for block ${firstBlockId}, mesh: ${firstMesh.name}`);
   }
   
   private updateUVDebugData() {
@@ -881,8 +982,6 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
     
     // Update the visualizer
     this.drawUVVisualizer();
-    
-    console.log(`Updated ${vertex}.${coordinate} to ${value} for vertex ${vertexIndex}`);
   }
   
   public resetUVs() {
@@ -978,8 +1077,6 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
     // Apply the new material
     this.debugTriangleMesh.material = newMaterial;
     this.currentTexture = textureName;
-    
-    console.log(`Changed texture to: ${textureName}`);
   }
   
   public resetTexture() {
@@ -992,8 +1089,6 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
     if (material.map && material.map.name) {
       this.currentTexture = material.map.name;
     }
-    
-    console.log('Reset to original texture');
   }
 
   // UV Visualizer methods
@@ -1234,6 +1329,436 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
     });
   }
 
+  // Visualization mode methods
+  public changeVisualizationMode(mode: string) {
+    this.visualizationMode = mode;
+    this.updateLightingForMode(mode);
+    this.applyVisualizationMode();
+  }
+  
+  private updateLightingForMode(mode: string) {
+    if (mode === 'textured') {
+      // Textured mode: bright ambient light, no directional light
+      this.ambientLight.intensity = 1.0;
+      this.directionalLight.visible = false;
+    } else {
+      // Visualization modes: dim ambient light, strong directional light for shadows
+      this.ambientLight.intensity = 0.3;
+      this.directionalLight.visible = true;
+    }
+  }
+  
+  private applyVisualizationMode() {
+    this.loadedBlocks.forEach((block) => {
+      block.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          this.applyMaterialToMesh(child, this.visualizationMode);
+        }
+      });
+    });
+    
+    // Update camera position after applying visualization
+    this.setCameraToFitScene();
+  }
+  
+  private applyMaterialToMesh(mesh: THREE.Mesh, mode: string) {
+    // Store original material if not already stored
+    if (!this.originalMaterials.has(mesh)) {
+      this.originalMaterials.set(mesh, mesh.material);
+    }
+    
+    if (mode === 'textured') {
+      // Restore original textured material and remove vertex colors
+      const originalMaterial = this.originalMaterials.get(mesh);
+      if (originalMaterial) {
+        mesh.material = originalMaterial;
+        
+        // Remove vertex colors if they exist
+        if (mesh.geometry.attributes.color) {
+          mesh.geometry.deleteAttribute('color');
+        }
+      }
+      return;
+    }
+    
+    // Apply vertex colors based on metadata
+    this.applyVertexColors(mesh, mode);
+  }
+  
+  private applyVertexColors(mesh: THREE.Mesh, mode: string) {
+    const geometry = mesh.geometry;
+    
+    // Get the appropriate metadata attribute
+    let dataAttribute;
+    let colorMap;
+    
+    const terrainAttribute = geometry.attributes._terrain_type || 
+                            geometry.attributes._TERRAIN_TYPE || 
+                            geometry.attributes.TERRAIN_TYPE;
+    const regionAttribute = geometry.attributes._region_id || 
+                           geometry.attributes._REGION_ID || 
+                           geometry.attributes.REGION_ID;
+    const scriptAttribute = geometry.attributes._script_id || 
+                           geometry.attributes._SCRIPT_ID || 
+                           geometry.attributes.SCRIPT_ID;
+    
+    switch (mode) {
+      case 'terrain':
+        dataAttribute = terrainAttribute;
+        colorMap = this.getTerrainColors();
+        break;
+      case 'region':
+        dataAttribute = regionAttribute;
+        colorMap = this.getRegionColors();
+        break;
+      case 'script':
+        dataAttribute = scriptAttribute;
+        colorMap = this.getScriptColors();
+        break;
+      default:
+        return;
+    }
+    
+    if (!dataAttribute) {
+      this.applyFallbackVertexColors(mesh, [0.8, 0.4, 0.4]);
+      return;
+    }
+    
+    const vertexCount = geometry.attributes.position.count;
+    const triangleCount = geometry.index ? geometry.index.count / 3 : vertexCount / 3;
+    
+    // Check if we have a metadata mismatch and choose appropriate strategy
+    if (dataAttribute.count !== triangleCount) {
+      if (dataAttribute.count === vertexCount) {
+        this.applyPerVertexMetadata(mesh, mode, dataAttribute, colorMap);
+        return;
+      } else {
+        this.applySharedMetadata(mesh, mode, dataAttribute, colorMap);
+        return;
+      }
+    }
+    
+    // Standard per-triangle metadata
+    this.applyPerTriangleMetadata(mesh, mode, dataAttribute, colorMap);
+  }
+  
+  private applyPerTriangleMetadata(mesh: THREE.Mesh, mode: string, dataAttribute: THREE.BufferAttribute, colorMap: {[key: number]: number[]}) {
+    const geometry = mesh.geometry;
+    const vertexCount = geometry.attributes.position.count;
+    const colors = new Float32Array(vertexCount * 3);
+    
+    if (geometry.index) {
+      const indexArray = geometry.index.array;
+      
+      for (let i = 0; i < indexArray.length; i += 3) {
+        const triangleIndex = Math.floor(i / 3);
+        const metadataValue = dataAttribute.getX(triangleIndex);
+        const color = colorMap[metadataValue] || [0.7, 0.7, 0.7];
+        
+        const v1Index = indexArray[i];
+        const v2Index = indexArray[i + 1];
+        const v3Index = indexArray[i + 2];
+        
+        colors[v1Index * 3] = color[0];
+        colors[v1Index * 3 + 1] = color[1];
+        colors[v1Index * 3 + 2] = color[2];
+        
+        colors[v2Index * 3] = color[0];
+        colors[v2Index * 3 + 1] = color[1];
+        colors[v2Index * 3 + 2] = color[2];
+        
+        colors[v3Index * 3] = color[0];
+        colors[v3Index * 3 + 1] = color[1];
+        colors[v3Index * 3 + 2] = color[2];
+      }
+    } else {
+      for (let i = 0; i < vertexCount; i += 3) {
+        const triangleIndex = Math.floor(i / 3);
+        const metadataValue = dataAttribute.getX(triangleIndex);
+        const color = colorMap[metadataValue] || [0.7, 0.7, 0.7];
+        
+        for (let j = 0; j < 3; j++) {
+          const vertexIndex = i + j;
+          colors[vertexIndex * 3] = color[0];
+          colors[vertexIndex * 3 + 1] = color[1];
+          colors[vertexIndex * 3 + 2] = color[2];
+        }
+      }
+    }
+    
+    this.applyColorsToMesh(mesh, colors, mode);
+  }
+  
+  private applyPerVertexMetadata(mesh: THREE.Mesh, mode: string, dataAttribute: THREE.BufferAttribute, colorMap: {[key: number]: number[]}) {
+    const geometry = mesh.geometry;
+    const vertexCount = geometry.attributes.position.count;
+    const colors = new Float32Array(vertexCount * 3);
+    
+    // Each vertex has its own metadata value
+    for (let i = 0; i < vertexCount; i++) {
+      const metadataValue = dataAttribute.getX(i);
+      const color = colorMap[metadataValue] || [0.7, 0.7, 0.7];
+      
+      colors[i * 3] = color[0];
+      colors[i * 3 + 1] = color[1];
+      colors[i * 3 + 2] = color[2];
+    }
+    
+    this.applyColorsToMesh(mesh, colors, mode);
+  }
+  
+  private applySharedMetadata(mesh: THREE.Mesh, mode: string, dataAttribute: THREE.BufferAttribute, colorMap: {[key: number]: number[]}) {
+    const geometry = mesh.geometry;
+    const vertexCount = geometry.attributes.position.count;
+    const colors = new Float32Array(vertexCount * 3);
+    
+    // Use modulo to wrap around the available metadata
+    if (geometry.index) {
+      const indexArray = geometry.index.array;
+      
+      for (let i = 0; i < indexArray.length; i += 3) {
+        const triangleIndex = Math.floor(i / 3);
+        const metadataIndex = triangleIndex % dataAttribute.count;
+        const metadataValue = dataAttribute.getX(metadataIndex);
+        const color = colorMap[metadataValue] || [0.7, 0.7, 0.7];
+        
+        const v1Index = indexArray[i];
+        const v2Index = indexArray[i + 1];
+        const v3Index = indexArray[i + 2];
+        
+        colors[v1Index * 3] = color[0];
+        colors[v1Index * 3 + 1] = color[1];
+        colors[v1Index * 3 + 2] = color[2];
+        
+        colors[v2Index * 3] = color[0];
+        colors[v2Index * 3 + 1] = color[1];
+        colors[v2Index * 3 + 2] = color[2];
+        
+        colors[v3Index * 3] = color[0];
+        colors[v3Index * 3 + 1] = color[1];
+        colors[v3Index * 3 + 2] = color[2];
+      }
+    } else {
+      for (let i = 0; i < vertexCount; i += 3) {
+        const triangleIndex = Math.floor(i / 3);
+        const metadataIndex = triangleIndex % dataAttribute.count;
+        const metadataValue = dataAttribute.getX(metadataIndex);
+        const color = colorMap[metadataValue] || [0.7, 0.7, 0.7];
+        
+        for (let j = 0; j < 3; j++) {
+          const vertexIndex = i + j;
+          colors[vertexIndex * 3] = color[0];
+          colors[vertexIndex * 3 + 1] = color[1];
+          colors[vertexIndex * 3 + 2] = color[2];
+        }
+      }
+    }
+    
+    this.applyColorsToMesh(mesh, colors, mode);
+  }
+  
+  private applyColorsToMesh(mesh: THREE.Mesh, colors: Float32Array, mode: string) {
+    const geometry = mesh.geometry;
+    const colorAttribute = new THREE.BufferAttribute(colors, 3);
+    geometry.setAttribute('color', colorAttribute);
+    
+    const vertexColorMaterial = new THREE.MeshPhongMaterial({
+      vertexColors: true,
+      name: `${mode}_vertex_colors`
+    });
+    
+    mesh.material = vertexColorMaterial;
+    mesh.receiveShadow = true;
+    mesh.castShadow = true;
+  }
+  
+  private applyFallbackVertexColors(mesh: THREE.Mesh, color: number[]) {
+    const geometry = mesh.geometry;
+    const vertexCount = geometry.attributes.position.count;
+    const colors = new Float32Array(vertexCount * 3);
+    
+    // Apply the same color to all vertices
+    for (let i = 0; i < vertexCount; i++) {
+      colors[i * 3] = color[0];
+      colors[i * 3 + 1] = color[1];
+      colors[i * 3 + 2] = color[2];
+    }
+    
+    const colorAttribute = new THREE.BufferAttribute(colors, 3);
+    geometry.setAttribute('color', colorAttribute);
+    
+    const vertexColorMaterial = new THREE.MeshPhongMaterial({
+      vertexColors: true,
+      name: 'fallback_vertex_colors'
+    });
+    
+    mesh.material = vertexColorMaterial;
+    mesh.receiveShadow = true;
+    mesh.castShadow = true;
+  }
+  
+  private getTerrainColors(): {[key: number]: number[]} {
+    const worldMapType = this.getWorldMapType();
+    let colorMap: {[key: number]: string} = {};
+    
+    // Use the correct color map based on world type
+    switch (worldMapType) {
+      case 'wm0': // overground
+        colorMap = {
+          0: '#4c3', 1: '#3a3', 2: '#977', 3: '#00a', 4: '#2bad9f', 5: '#00d', 6: '#14f', 7: '#898',
+          8: '#ee7', 9: '#aa5', 10: '#eee', 11: '#ff0', 12: '#aa0', 13: '#0d0', 14: '#0e0', 15: '#0f0',
+          16: '#a98', 17: '#ffa', 18: '#668', 19: '#aa7', 20: '#bba', 21: '#a88', 22: '#0af', 23: '#000',
+          24: '#ee7', 25: '#282', 26: '#008', 27: '#fbb', 28: '#ffc', 29: '#b99', 30: '#c99'
+        };
+        break;
+      case 'wm2': // underwater
+        colorMap = {
+          0: '#258',
+          3: '#69a',
+          15: '#479'
+        };
+        break;
+      case 'wm3': // glacier
+        colorMap = {
+          1: '#aaa',
+          2: '#cce',
+          9: '#eee',
+          10: '#fff'
+        };
+        break;
+    }
+    
+    // Convert hex colors to RGB arrays
+    const rgbColors: {[key: number]: number[]} = {};
+    Object.entries(colorMap).forEach(([id, hexColor]) => {
+      const rgb = this.hexToRgb(hexColor);
+      rgbColors[parseInt(id)] = [rgb.r / 255, rgb.g / 255, rgb.b / 255];
+    });
+    
+    return rgbColors;
+  }
+  
+  private getRegionColors(): {[key: number]: number[]} {
+    const worldMapType = this.getWorldMapType();
+    let colorMap: {[key: number]: string} = {};
+    
+    // Use the correct color map based on world type
+    switch (worldMapType) {
+      case 'wm0': // overground
+        colorMap = {
+          0: '#605a5a', 1: '#5c3', 2: '#69c', 3: '#988', 4: '#d0a040', 5: '#492', 6: '#aa6039', 7: '#809080',
+          8: '#6a7', 9: '#e65', 10: '#5e5', 11: '#fff', 12: '#a86', 13: '#c97', 14: '#0d0', 15: '#8f0',
+          16: '#f9a', 17: '#00a'
+        };
+        break;
+      case 'wm2': // underwater
+        colorMap = {
+          0: '#258',
+          18: '#69a'
+        };
+        break;
+      case 'wm3': // glacier
+        colorMap = {
+          11: '#fff'
+        };
+        break;
+    }
+    
+    // Convert hex colors to RGB arrays
+    const rgbColors: {[key: number]: number[]} = {};
+    Object.entries(colorMap).forEach(([id, hexColor]) => {
+      const rgb = this.hexToRgb(hexColor);
+      rgbColors[parseInt(id)] = [rgb.r / 255, rgb.g / 255, rgb.b / 255];
+    });
+    
+    return rgbColors;
+  }
+  
+  private getScriptColors(): {[key: number]: number[]} {
+    const scriptColorMap = {
+      0: '#6a6a6a',      // Gray for no script
+      1: '#555555',      // Light gray
+      2: '#000000',      // Black (unused)
+      3: '#ff4a00',      // Light red
+      4: '#ff0000',      // Red-orange
+      5: '#ff5500',      // Bright red
+      6: '#ff8800',      // Pure red
+      7: '#ffaa00',      // Dark red
+      8: '#cc0000'       // Darker red
+    };
+    
+    // Convert hex colors to RGB arrays and add chocobo yellow for higher IDs
+    const rgbColors: {[key: number]: number[]} = {};
+    
+    // Add defined script colors
+    Object.entries(scriptColorMap).forEach(([id, hexColor]) => {
+      const rgb = this.hexToRgb(hexColor);
+      rgbColors[parseInt(id)] = [rgb.r / 255, rgb.g / 255, rgb.b / 255];
+    });
+    
+    // For any other script IDs, use chocobo yellow or generate colors
+    for (let i = 9; i < 256; i++) {
+      if (i >= 100 && i <= 150) {
+        // Chocobo areas - use yellow
+        const rgb = this.hexToRgb('#ffff00');
+        rgbColors[i] = [rgb.r / 255, rgb.g / 255, rgb.b / 255];
+      } else {
+        // Generate other colors using HSV
+        const hue = (i * 137.508) % 360;
+        const saturation = 0.7;
+        const value = 0.8;
+        const rgb = this.hsvToRgb(hue, saturation, value);
+        rgbColors[i] = [rgb.r / 255, rgb.g / 255, rgb.b / 255];
+      }
+    }
+    
+    return rgbColors;
+  }
+  
+  private hexToRgb(hex: string): {r: number, g: number, b: number} {
+    // Remove # if present
+    hex = hex.replace('#', '');
+    
+    // Handle 3-character hex codes
+    if (hex.length === 3) {
+      hex = hex.split('').map(char => char + char).join('');
+    }
+    
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    
+    return { r, g, b };
+  }
+  
+  private hsvToRgb(h: number, s: number, v: number): {r: number, g: number, b: number} {
+    const c = v * s;
+    const x = c * (1 - Math.abs((h / 60) % 2 - 1));
+    const m = v - c;
+    
+    let r = 0, g = 0, b = 0;
+    
+    if (0 <= h && h < 60) {
+      r = c; g = x; b = 0;
+    } else if (60 <= h && h < 120) {
+      r = x; g = c; b = 0;
+    } else if (120 <= h && h < 180) {
+      r = 0; g = c; b = x;
+    } else if (180 <= h && h < 240) {
+      r = 0; g = x; b = c;
+    } else if (240 <= h && h < 300) {
+      r = x; g = 0; b = c;
+    } else if (300 <= h && h < 360) {
+      r = c; g = 0; b = x;
+    }
+    
+    return {
+      r: Math.round((r + m) * 255),
+      g: Math.round((g + m) * 255),
+      b: Math.round((b + m) * 255)
+    };
+  }
+
   // Camera persistence methods
   private initCameraPersistence() {
     // Load saved camera position
@@ -1266,8 +1791,8 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
         w: this.camera.quaternion.w
       },
       timestamp: Date.now()
-    };
-    
+    }; 
+    // console.log('cameraData', cameraData.position)
     localStorage.setItem(this.cameraStorageKey, JSON.stringify(cameraData));
   }
 
@@ -1281,7 +1806,6 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
       // Check if data is not too old (optional - remove if you want permanent persistence)
       const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
       if (Date.now() - cameraData.timestamp > maxAge) {
-        console.log('Saved camera position is too old, using default');
         return;
       }
       
@@ -1306,8 +1830,6 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
         cameraData.quaternion.w
       );
       
-      console.log(`Restored camera position for ${this.worldType} world:`, cameraData.position);
-      
     } catch (error) {
       console.error('Error loading saved camera position:', error);
     }
@@ -1317,7 +1839,6 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
     // Reset to default position and clear saved data
     localStorage.removeItem(this.cameraStorageKey);
     this.positionCameraForWorldView();
-    console.log(`Camera position reset for ${this.worldType} world`);
   }
 
   public exportCameraPosition(): string {

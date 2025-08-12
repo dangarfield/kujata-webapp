@@ -157,6 +157,58 @@
   background-color: #1976D2;
 }
 
+.visualization-controls {
+  background-color: #f8f8f8;
+  border: solid #c0c0c0 1px;
+  border-radius: 4px;
+  padding: 8px;
+  margin: 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.visualization-label {
+  font-weight: bold;
+  color: #404040;
+  font-size: 9pt;
+  min-width: 120px;
+}
+
+.visualization-dropdown {
+  padding: 4px 8px;
+  border: solid #ccc 1px;
+  border-radius: 2px;
+  font-size: 9pt;
+  background-color: #fff;
+  min-width: 100px;
+}
+
+.visualization-dropdown:focus {
+  outline: none;
+  border-color: #2196F3;
+}
+
+.attribute-list {
+  font-family: monospace;
+  font-size: 7pt;
+  color: #666;
+  margin-bottom: 6px;
+  word-break: break-all;
+}
+
+.metadata-section {
+  margin: 2px 0;
+  font-size: 8pt;
+}
+
+.metadata-missing {
+  margin: 2px 0;
+  font-size: 8pt;
+  color: #999;
+  font-style: italic;
+}
+
 .uv-debug-panel {
   background-color: #f0f8ff;
   border: solid #2196F3 2px;
