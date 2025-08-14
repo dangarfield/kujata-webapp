@@ -1,0 +1,43 @@
+<div style="background-color:#e0e0e0; padding:4px; margin-bottom:16px;">
+
+  <!--
+  <button (click)="startAnimation()">Start animation</button>
+  <button (click)="stopAnimation()">Stop animation</button>
+  -->
+
+  <div *ngIf="friendlyName" style="background-color:white; padding:4px;">
+    <h2>HRC ID: {{selectedHrcId}}</h2>
+    <h3>Name: {{friendlyName}}</h3>
+
+    <div style="display:flex; flex-flow:row wrap; align-items:flex-start; align-content:flex-start; font-size:12pt;">
+
+      <div class="model-panel">
+        <h4>Model</h4>
+        <div class="scene-container" id="scene-container">
+        </div>
+      </div>
+
+      <div class="animations-panel" *ngIf="availableAnimations.length > 0">
+        <h4>Animations ({{availableAnimations.length}})</h4>
+        <div class="animation-category">
+          <div *ngFor="let animation of availableAnimations; let i = index" 
+               class="animation-box" 
+               [class.selected]="i === selectedAnimationIndex"
+               (click)="onSelectAnimation(i)">
+            {{animation.name}}
+          </div>
+        </div>
+      </div>
+
+      <div class="no-animations-panel" *ngIf="availableAnimations.length === 0 && gltf">
+        <h4>Animations</h4>
+        <div style="padding:8px; color:#666; font-style:italic;">
+          No animations found in this model
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>

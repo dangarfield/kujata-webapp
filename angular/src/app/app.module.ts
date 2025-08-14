@@ -14,6 +14,8 @@ import { FieldModelsComponent } from './field-models/field-models.component';
 import { BattleModelsComponent } from './battle-models/battle-models.component';
 import { FieldModelDetailsComponent } from './field-model-details/field-model-details.component';
 import { BattleModelDetailsComponent } from './battle-model-details/battle-model-details.component';
+import { WorldModelsComponent } from './world-models/world-models.component';
+import { WorldModelDetailsComponent } from './world-model-details/world-model-details.component';
 import { SoundDetailsComponent } from './sound-details/sound-details.component';
 import { WorldMapComponent } from './world-map/world-map.component';
 import { WorldDetailsComponent } from './world-details/world-details.component';
@@ -25,6 +27,8 @@ const appRoutes: Routes = [
   { path: 'field-model-details/:hrcId', component: FieldModelDetailsComponent },
   { path: 'battle-models', component: BattleModelsComponent },
   { path: 'battle-model-details/:hrcId', component: BattleModelDetailsComponent },
+  { path: 'world-models', component: WorldModelsComponent },
+  { path: 'world-model-details/:hrcId', component: WorldModelDetailsComponent },
   { path: 'field-op-codes', component: FieldOpCodesComponent },
   { path: 'field-op-code-details/:hex', component: FieldOpCodeDetailsComponent },
   { path: 'sounds', component: SoundDetailsComponent },
@@ -40,6 +44,8 @@ const appRoutes: Routes = [
     FieldModelDetailsComponent,
     BattleModelsComponent,
     BattleModelDetailsComponent,
+    WorldModelsComponent,
+    WorldModelDetailsComponent,
     FieldScenesComponent,
     SceneDetailsComponent,
     FieldOpCodesComponent,

@@ -1,0 +1,23 @@
+<div style="background-color:#c0c0c0">
+
+  <div style="padding:4px">
+    <div style="background-color:white; padding:4px; width:308px; font-size:10pt;">
+      {{status}}
+    </div>
+  </div>
+
+  <div style="height:1em;"></div>
+
+  <div style="display:flex; flex-wrap: wrap;">
+    <a *ngFor="let display of displays" class="display-box" [routerLink]="'/world-model-details/' + display.skeleton">
+      <div *ngIf="!display.screenshotDataUrl" class="scene-container" [id]="display.containerId"></div>
+      <div *ngIf="display.screenshotDataUrl" class="scene-container">
+        <img [src]="display.screenshotDataUrl" />
+      </div>
+      <div style="height:15px">
+        <div style="text-align:center"><b>{{display.friendlyName}}</b></div>
+        <div style="text-align:center; font-size:10pt"><b>{{display.skeleton}}</b></div>
+      </div>
+    </a>
+  </div>
+</div>
