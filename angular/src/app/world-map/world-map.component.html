@@ -7,28 +7,136 @@
 
   <!-- Tab Navigation -->
   <div class="tab-container">
-    <div 
-      *ngFor="let tab of tabs" 
-      class="tab-header"
-      [class.active]="activeTab === tab.id"
-      (click)="onSelectTab(tab.id)">
-      {{tab.label}}
+    <!-- World Type Tabs (Left Side) -->
+    <div class="world-tabs-group">
+      <div 
+        *ngFor="let tab of tabs" 
+        class="tab-header"
+        [class.active]="activeTab === tab.id"
+        (click)="onSelectTab(tab.id)">
+        {{tab.label}}
+      </div>
+    </div>
+    
+    <!-- View Mode Toggle (Right Side) -->
+    <div class="view-toggle-container">
+      <div 
+        class="view-toggle-button"
+        [class.active]="viewMode === 'map'"
+        (click)="onToggleView('map')">
+        Map
+      </div>
+      <div 
+        class="view-toggle-button"
+        [class.active]="viewMode === 'scripts'"
+        (click)="onToggleView('scripts')">
+        Scripts
+      </div>
     </div>
   </div>
 
   <!-- Tab Content -->
   <div class="tab-content">
-    <div *ngIf="activeTab === 'overground'" class="tab-panel">
-      <world-details [worldType]="'overground'"></world-details>
-    </div>
     
-    <div *ngIf="activeTab === 'underwater'" class="tab-panel">
-      <world-details [worldType]="'underwater'"></world-details>
+    <!-- Map View -->
+    <div *ngIf="viewMode === 'map'" class="view-panel">
+      <div *ngIf="activeTab === 'overground'" class="tab-panel">
+        <world-details [worldType]="'overground'"></world-details>
+      </div>
+      
+      <div *ngIf="activeTab === 'underwater'" class="tab-panel">
+        <world-details [worldType]="'underwater'"></world-details>
+      </div>
+      
+      <div *ngIf="activeTab === 'glacier'" class="tab-panel">
+        <world-details [worldType]="'glacier'"></world-details>
+      </div>
     </div>
-    
-    <div *ngIf="activeTab === 'glacier'" class="tab-panel">
-      <world-details [worldType]="'glacier'"></world-details>
+
+    <!-- Scripts View -->
+    <div *ngIf="viewMode === 'scripts'" class="view-panel">
+      <div class="scripts-view">
+        
+        <!-- Function Type Tabs -->
+        <div class="function-type-tabs">
+          <div 
+            class="function-type-tab"
+            [class.active]="activeFunctionType === 'system'"
+            (click)="onSelectFunctionType('system')">
+            System ({{getFunctionTypeCount('system')}})
+          </div>
+          <div 
+            class="function-type-tab"
+            [class.active]="activeFunctionType === 'model'"
+            (click)="onSelectFunctionType('model')">
+            Model ({{getFunctionTypeCount('model')}})
+          </div>
+          <div 
+            class="function-type-tab"
+            [class.active]="activeFunctionType === 'mesh'"
+            (click)="onSelectFunctionType('mesh')">
+            Mesh ({{getFunctionTypeCount('mesh')}})
+          </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="scripts-main-content">
+          
+          <!-- Function List Panel (Left) -->
+          <div class="function-list-panel">
+            <h4 class="panel-header">{{activeFunctionType | titlecase}} Functions</h4>
+            <div class="function-list">
+              <div 
+                *ngFor="let func of getFunctionsByType(activeFunctionType)" 
+                class="function-list-item"
+                [class.selected]="selectedFunction === func"
+                (click)="onSelectFunction(func)">
+                <div class="function-list-header">
+                  <span class="function-list-index">{{func.index}}</span>
+                  <span class="function-list-name">{{func.name}}</span>
+                  <span class="function-list-meta">{{func.opcodes?.length || 0}} opcodes</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Function Detail Panel (Right) -->
+          <div class="function-detail-panel">
+            <div *ngIf="!selectedFunction" class="no-function-selected">
+              <h4>Select a function to view details</h4>
+              <p>Choose a {{activeFunctionType}} function from the list to see its opcodes and metadata.</p>
+            </div>
+
+            <div *ngIf="selectedFunction" class="function-details">
+              <div class="function-detail-header">
+                <span class="function-detail-index">{{selectedFunction.index}}</span>
+                <span class="function-detail-name">{{selectedFunction.name}}</span>
+                <span class="detail-badge">{{selectedFunction.opcodes?.length || 0}} opcodes</span>
+              </div>
+
+              <!-- Function opcodes -->
+              <div class="function-detail-opcodes">
+                <div *ngIf="selectedFunction.hasOpcodes" class="opcode-list">
+                  <div *ngFor="let opcode of selectedFunction.opcodes; let i = index" class="opcode-detail-line">
+                    <div class="opcode-detail-content">
+                      <span class="opcode-raw" *ngIf="opcode.raw">{{opcode.raw}}</span>
+                      <span class="opcode-raw-placeholder" *ngIf="!opcode.raw"></span>
+                      <span class="opcode-js" *ngIf="opcode.js">{{opcode.js}}</span>
+                      <span class="opcode-fallback" *ngIf="!opcode.js && !opcode.raw">{{opcode | json}}</span>
+                    </div>
+                  </div>
+                </div>
+                <div *ngIf="!selectedFunction.hasOpcodes" class="no-opcodes">
+                  No opcodes available for this function.
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
     </div>
+
   </div>
 
 </div>

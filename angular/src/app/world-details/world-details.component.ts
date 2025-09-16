@@ -119,6 +119,7 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
   }
 
   ngOnDestroy() {
+    console.log('WorldDetailsComponent destroying...');
     this.isDestroyed = true;
     
     // Save camera position one final time before destroying
@@ -129,9 +130,15 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
       clearInterval(this.saveInterval);
     }
     
+    // Clear all world data and dispose resources
+    this.clearWorldData();
+    
+    // Dispose renderer
     if (this.renderer) {
       this.renderer.dispose();
     }
+    
+    console.log('WorldDetailsComponent destroyed');
   }
 
   private initThreeJS() {
@@ -229,17 +236,51 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
   }
 
   private clearWorldData() {
-    // Clear previous world blocks from scene
+    // Properly dispose of geometries and materials from loaded blocks
     this.loadedBlocks.forEach((block) => {
+      block.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          // Dispose geometry
+          if (child.geometry) {
+            child.geometry.dispose();
+          }
+          
+          // Dispose materials and textures
+          if (child.material) {
+            if (Array.isArray(child.material)) {
+              child.material.forEach(material => {
+                this.disposeMaterial(material);
+              });
+            } else {
+              this.disposeMaterial(child.material);
+            }
+          }
+        }
+      });
       this.scene.remove(block);
     });
     this.loadedBlocks.clear();
     
-    // Clear wireframe blocks from scene
+    // Properly dispose of wireframe blocks
     this.wireframeBlocks.forEach((wireframe) => {
+      wireframe.traverse((child) => {
+        if (child instanceof THREE.LineSegments) {
+          if (child.geometry) {
+            child.geometry.dispose();
+          }
+          if (child.material) {
+            this.disposeMaterial(child.material);
+          }
+        }
+      });
       this.scene.remove(wireframe);
     });
     this.wireframeBlocks.clear();
+    
+    // Force renderer cleanup
+    if (this.renderer) {
+      this.renderer.renderLists.dispose();
+    }
     
     // Reset loading progress
     this.loadingProgress = { loaded: 0, total: 0 };
@@ -264,6 +305,30 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
     
     // Reset fetch status
     this.fetchStatus = "NONE";
+    
+    console.log('World data cleared and resources disposed');
+  }
+
+  private disposeMaterial(material: THREE.Material) {
+    // Dispose textures if they exist
+    if ('map' in material && material.map) {
+      material.map.dispose();
+    }
+    if ('normalMap' in material && material.normalMap) {
+      material.normalMap.dispose();
+    }
+    if ('emissiveMap' in material && material.emissiveMap) {
+      material.emissiveMap.dispose();
+    }
+    if ('specularMap' in material && material.specularMap) {
+      material.specularMap.dispose();
+    }
+    if ('envMap' in material && material.envMap) {
+      material.envMap.dispose();
+    }
+    
+    // Dispose the material itself
+    material.dispose();
   }
 
   private getWorldMapType(): string {
@@ -314,63 +379,111 @@ export class WorldDetailsComponent implements OnInit, AfterViewInit, OnDestroy, 
     this.loadingProgress.total = defaultBlocks.length;
     this.loadingProgress.loaded = 0;
     
-    // Load all default blocks (0-62)
-    defaultBlocks.forEach(blockId => {
-      this.loadWorldBlock(blockId);
-    });
+    // Create loading manager for better resource control
+    const loadingManager = this.createLoadingManager();
+    
+    // Load blocks in batches to avoid overwhelming the browser
+    this.loadBlocksInBatches(defaultBlocks, loadingManager);
   }
 
-  private loadWorldBlock(blockId: number) {
-    const gltfLoader = new GLTFLoader();
-    const worldMapType = this.getWorldMapType();
-    const modelPath = `/data/world/world_us.lgp/${worldMapType}-block_${blockId}.gltf`;
-    const blockCoords = this.worldMapMetadata.blockCoordinates[blockId.toString()];
+  private createLoadingManager(): THREE.LoadingManager {
+    const manager = new THREE.LoadingManager();
     
-    gltfLoader.load(
-      environment.KUJATA_DATA_BASE_URL + modelPath,
-      (gltf) => {
-        addBlendingToMaterials(gltf);
-        
-        // Position the block according to metadata
-        gltf.scene.position.set(
-          blockCoords.x,
-          0,
-          blockCoords.y // Y in metadata becomes Z in Three.js
-        );
-        
-        // Store the loaded block
-        this.loadedBlocks.set(blockId, gltf.scene);
-        this.scene.add(gltf.scene);
-        
-        // Create wireframe version for debugging
-        this.createWireframeForBlock(blockId, gltf.scene);
-        
-        this.loadingProgress.loaded++;
-        
-        // Check if all blocks are loaded
-        if (this.loadingProgress.loaded === this.loadingProgress.total) {
-          this.fetchStatus = "SUCCESS";
-          this.cdr.detectChanges();
-          this.positionCameraForWorldView();
-          this.initUVDebugPanel();
-        }
-      },
-      (progress) => {
-        // Loading progress for individual block
-      },
-      (error) => {
-        console.error(`Error loading ${worldMapType} block ${blockId}:`, error);
-        this.loadingProgress.loaded++;
-        
-        // Still check if we're done (even with errors)
-        if (this.loadingProgress.loaded === this.loadingProgress.total) {
-          this.fetchStatus = "SUCCESS";
-          this.cdr.detectChanges();
-          this.positionCameraForWorldView();
-          this.initUVDebugPanel();
-        }
+    manager.onLoad = () => {
+      console.log('All world blocks loaded successfully');
+      this.fetchStatus = "SUCCESS";
+      this.cdr.detectChanges();
+      this.positionCameraForWorldView();
+      this.initUVDebugPanel();
+    };
+    
+    manager.onProgress = (url, itemsLoaded, itemsTotal) => {
+      console.log(`Loading progress: ${itemsLoaded}/${itemsTotal} - ${url}`);
+    };
+    
+    manager.onError = (url) => {
+      console.error('Error loading resource:', url);
+    };
+    
+    return manager;
+  }
+
+  private async loadBlocksInBatches(blockIds: number[], manager: THREE.LoadingManager) {
+    const BATCH_SIZE = 3; // Load 3 blocks at a time to avoid resource exhaustion
+    
+    for (let i = 0; i < blockIds.length; i += BATCH_SIZE) {
+      const batch = blockIds.slice(i, i + BATCH_SIZE);
+      
+      // Load current batch
+      await this.loadBlockBatch(batch, manager);
+      
+      // Small delay between batches to let browser recover
+      if (i + BATCH_SIZE < blockIds.length) {
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
-    );
+    }
+  }
+
+  private loadBlockBatch(blockIds: number[], manager: THREE.LoadingManager): Promise<void> {
+    const promises = blockIds.map(blockId => this.loadWorldBlockPromise(blockId, manager));
+    return Promise.all(promises).then(() => {});
+  }
+
+  private loadWorldBlockPromise(blockId: number, manager: THREE.LoadingManager): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const gltfLoader = new GLTFLoader(manager);
+      const worldMapType = this.getWorldMapType();
+      const modelPath = `/data/world/world_us.lgp/${worldMapType}-block_${blockId}.gltf`;
+      const blockCoords = this.worldMapMetadata.blockCoordinates[blockId.toString()];
+      
+      gltfLoader.load(
+        environment.KUJATA_DATA_BASE_URL + modelPath,
+        (gltf) => {
+          if (this.isDestroyed) {
+            console.log(`Ignoring load callback for block ${blockId} - component destroyed`);
+            resolve();
+            return;
+          }
+          
+          addBlendingToMaterials(gltf);
+          
+          // Position the block according to metadata
+          gltf.scene.position.set(
+            blockCoords.x,
+            0,
+            blockCoords.y // Y in metadata becomes Z in Three.js
+          );
+          
+          // Store the loaded block
+          this.loadedBlocks.set(blockId, gltf.scene);
+          this.scene.add(gltf.scene);
+          
+          // Create wireframe version for debugging
+          this.createWireframeForBlock(blockId, gltf.scene);
+          
+          this.loadingProgress.loaded++;
+          this.cdr.detectChanges();
+          
+          console.log(`Loaded block ${blockId} (${this.loadingProgress.loaded}/${this.loadingProgress.total})`);
+          resolve();
+        },
+        (progress) => {
+          // Loading progress for individual block
+          if (progress.lengthComputable) {
+            const percentComplete = (progress.loaded / progress.total) * 100;
+            console.log(`Block ${blockId} loading: ${percentComplete.toFixed(1)}%`);
+          }
+        },
+        (error) => {
+          console.error(`Error loading ${worldMapType} block ${blockId}:`, error);
+          this.loadingProgress.loaded++;
+          this.cdr.detectChanges();
+          
+          // Don't reject - we want to continue loading other blocks
+          resolve();
+        }
+      );
+    });
   }
 
   private positionCameraForWorldView() {
